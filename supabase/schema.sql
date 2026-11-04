@@ -1,0 +1,50 @@
+-- =============================================
+-- IEEE STLC ExpenseTracker - Supabase Schema
+-- =============================================
+-- Run this SQL in the Supabase SQL Editor
+
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create gastos table
+CREATE TABLE IF NOT EXISTS gastos (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  fecha DATE NOT NULL,
+  categoria TEXT NOT NULL CHECK (categoria IN ('catering', 'transporte', 'imprenta', 'hackathon', 'materiales')),
+  proveedor TEXT NOT NULL,
+  tipo_comprobante TEXT NOT NULL CHECK (tipo_comprobante IN ('factura', 'recibo')),
+  monto_bob DECIMAL(12, 2) NOT NULL CHECK (monto_bob > 0),
+  monto_usd DECIMAL(12, 2),
+  pdf_url TEXT,
+  drive_file_id TEXT,
+  drive_url TEXT,
+  imagen_original TEXT
+);
+
+-- Create indexes for common queries
+CREATE INDEX IF NOT EXISTS idx_gastos_fecha ON gastos(fecha DESC);
+CREATE INDEX IF NOT EXISTS idx_gastos_categoria ON gastos(categoria);
+CREATE INDEX IF NOT EXISTS idx_gastos_created_at ON gastos(created_at DESC);
+
+-- Enable Row Level Security (optional, for production)
+ALTER TABLE gastos ENABLE ROW LEVEL SECURITY;
+
+-- Create a policy that allows all operations (adjust for production)
+CREATE POLICY "Allow all operations" ON gastos
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+-- Create a view for summary by category
+CREATE OR REPLACE VIEW resumen_categorias AS
+SELECT 
+  categoria,
+  COUNT(*) as total_gastos,
+  SUM(monto_bob) as total_bob,
+  SUM(monto_usd) as total_usd,
+  MIN(fecha) as primera_fecha,
+  MAX(fecha) as ultima_fecha
+FROM gastos
+GROUP BY categoria
+ORDER BY total_bob DESC;

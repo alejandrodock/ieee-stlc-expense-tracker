@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="40" fill="url(#bg)"/>
+  <text x="96" y="78" font-family="Arial, sans-serif" font-size="42" font-weight="bold" fill="white" text-anchor="middle">IEEE</text>
+  <text x="96" y="125" font-family="Arial, sans-serif" font-size="28" font-weight="600" fill="rgba(255,255,255,0.9)" text-anchor="middle">STLC</text>
+  <text x="96" y="155" font-family="Arial, sans-serif" font-size="16" fill="rgba(255,255,255,0.7)" text-anchor="middle">💰 Expense</text>
+</svg>
