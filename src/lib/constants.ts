@@ -7,7 +7,8 @@ export const CATEGORIAS = [
 ] as const;
 
 export const TIPOS_COMPROBANTE = [
-  { value: 'factura', label: 'Factura Oficial (NIT IEEE Sección Bolivia)' },
+  { value: 'factura_ieee', label: 'Factura Oficial (NIT IEEE Sección Bolivia)' },
+  { value: 'factura_personal', label: 'Factura Oficial (C.I. Iván Mendoza)' },
   { value: 'recibo', label: 'Recibo de Caja' },
 ] as const;
 
@@ -16,7 +17,14 @@ export const PRESUPUESTO_INICIAL = 13618.08; // BOB
 export const TIPO_CAMBIO_USD = 6.96; // BOB per USD (approximate)
 
 export type CategoriaValue = typeof CATEGORIAS[number]['value'];
-export type TipoComprobanteValue = typeof TIPOS_COMPROBANTE[number]['value'];
+export type TipoComprobanteValue = typeof TIPOS_COMPROBANTE[number]['value'] | 'factura';
+
+export function getTipoComprobanteLabel(value: string): string {
+  if (value === 'factura' || value === 'factura_ieee') return 'Factura Oficial (NIT IEEE)';
+  if (value === 'factura_personal') return 'Factura Oficial (C.I. Iván Mendoza)';
+  if (value === 'recibo') return 'Recibo de Caja';
+  return value;
+}
 
 export function getCategoriaLabel(value: string): string {
   return CATEGORIAS.find(c => c.value === value)?.label ?? value;

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import {
   getCategoriaLabel, getCategoriaIcon, getCategoriaColor,
-  formatMonto, formatDate
+  getTipoComprobanteLabel, formatMonto, formatDate
 } from '@/lib/constants';
 import type { Gasto } from '@/lib/supabase';
 
@@ -48,8 +48,8 @@ export default function GastosList({ gastos, onDelete }: GastosListProps) {
           <div className="flex items-start gap-3">
             {/* Category Icon */}
             <div
-              className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-              style={{ backgroundColor: `${getCategoriaColor(gasto.categoria)}15` }}
+              className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-sm"
+              style={{ backgroundColor: `${getCategoriaColor(gasto.categoria)}18` }}
             >
               {getCategoriaIcon(gasto.categoria)}
             </div>
@@ -58,7 +58,7 @@ export default function GastosList({ gastos, onDelete }: GastosListProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h4 className="text-sm font-medium text-white truncate">
+                  <h4 className="text-sm font-semibold text-white truncate">
                     {gasto.proveedor}
                   </h4>
                   <p className="text-xs text-slate-400 mt-0.5">
@@ -70,20 +70,28 @@ export default function GastosList({ gastos, onDelete }: GastosListProps) {
                     Bs. {formatMonto(gasto.monto_bob)}
                   </p>
                   {gasto.monto_usd && (
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-400">
                       ≈ $ {formatMonto(gasto.monto_usd)}
                     </p>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 mt-2">
+              {/* Items / Description */}
+              {gasto.descripcion && (
+                <div className="mt-2 text-xs text-slate-300 bg-slate-800/50 rounded-lg p-2 border border-slate-700/40">
+                  <span className="text-slate-400 font-medium">Contenido: </span>
+                  <span className="text-slate-200">{gasto.descripcion}</span>
+                </div>
+              )}
+
+              <div className="flex items-center flex-wrap gap-2 mt-2.5">
                 <span className="text-xs text-slate-500">
                   {formatDate(gasto.fecha)}
                 </span>
                 <span className="text-xs text-slate-600">•</span>
-                <span className="text-xs text-slate-500">
-                  {gasto.tipo_comprobante === 'factura' ? 'Factura' : 'Recibo'}
+                <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700/50">
+                  {getTipoComprobanteLabel(gasto.tipo_comprobante)}
                 </span>
 
                 {/* Comprobante Status */}
@@ -92,16 +100,16 @@ export default function GastosList({ gastos, onDelete }: GastosListProps) {
                     href={gasto.drive_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+                    className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors ml-auto bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20"
                   >
                     <FileCheck className="w-3 h-3" />
-                    Subido
+                    En Drive
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 ) : (
-                  <span className="flex items-center gap-1 text-xs text-amber-400">
+                  <span className="flex items-center gap-1 text-xs text-amber-400 ml-auto bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
                     <AlertCircle className="w-3 h-3" />
-                    Pendiente
+                    Sin comprobante
                   </span>
                 )}
               </div>
@@ -111,14 +119,14 @@ export default function GastosList({ gastos, onDelete }: GastosListProps) {
             {onDelete && (
               <button
                 onClick={() => {
-                  if (confirm('¿Eliminar este gasto?')) {
+                  if (confirm(`¿Eliminar gasto de ${gasto.proveedor} (Bs. ${formatMonto(gasto.monto_bob)})?`)) {
                     onDelete(gasto.id);
                   }
                 }}
-                className="opacity-0 group-hover:opacity-100 absolute top-2 right-2 p-1.5 rounded-lg hover:bg-red-500/20 transition-all"
+                className="opacity-0 group-hover:opacity-100 absolute top-2 right-2 p-1.5 rounded-lg hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-all"
                 title="Eliminar gasto"
               >
-                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
           </div>

@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS gastos (
   fecha DATE NOT NULL,
   categoria TEXT NOT NULL CHECK (categoria IN ('catering', 'transporte', 'imprenta', 'hackathon', 'materiales')),
   proveedor TEXT NOT NULL,
-  tipo_comprobante TEXT NOT NULL CHECK (tipo_comprobante IN ('factura', 'recibo')),
+  descripcion TEXT,
+  tipo_comprobante TEXT NOT NULL CHECK (tipo_comprobante IN ('factura', 'factura_ieee', 'factura_personal', 'recibo')),
   monto_bob DECIMAL(12, 2) NOT NULL CHECK (monto_bob > 0),
   monto_usd DECIMAL(12, 2),
   pdf_url TEXT,
@@ -21,6 +22,11 @@ CREATE TABLE IF NOT EXISTS gastos (
   drive_url TEXT,
   imagen_original TEXT
 );
+
+-- In case the table already exists, ensure the descripcion column is present and constraint is updated:
+ALTER TABLE gastos ADD COLUMN IF NOT EXISTS descripcion TEXT;
+ALTER TABLE gastos DROP CONSTRAINT IF EXISTS gastos_tipo_comprobante_check;
+ALTER TABLE gastos ADD CONSTRAINT gastos_tipo_comprobante_check CHECK (tipo_comprobante IN ('factura', 'factura_ieee', 'factura_personal', 'recibo'));
 
 -- Create indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_gastos_fecha ON gastos(fecha DESC);

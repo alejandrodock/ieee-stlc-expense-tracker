@@ -18,6 +18,7 @@ export type Gasto = {
   fecha: string;
   categoria: string;
   proveedor: string;
+  descripcion: string | null;
   tipo_comprobante: string;
   monto_bob: number;
   monto_usd: number | null;

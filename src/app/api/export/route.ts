@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
 import * as XLSX from 'xlsx';
-import { getCategoriaLabel } from '@/lib/constants';
+import { getCategoriaLabel, getTipoComprobanteLabel } from '@/lib/constants';
 
 export async function GET() {
   try {
@@ -20,9 +20,8 @@ export async function GET() {
       'Fecha': g.fecha,
       'Categoría': getCategoriaLabel(g.categoria),
       'Proveedor / Concepto': g.proveedor,
-      'Tipo Comprobante': g.tipo_comprobante === 'factura'
-        ? 'Factura Oficial'
-        : 'Recibo de Caja',
+      'Descripción / Items': g.descripcion || 'Sin detalle específico',
+      'Tipo Comprobante': getTipoComprobanteLabel(g.tipo_comprobante),
       'Monto (BOB)': g.monto_bob,
       'Monto (USD)': g.monto_usd || '',
       'Enlace Comprobante': g.drive_url || 'Pendiente',
@@ -43,6 +42,7 @@ export async function GET() {
       'Fecha': '',
       'Categoría': '',
       'Proveedor / Concepto': '',
+      'Descripción / Items': '',
       'Tipo Comprobante': '',
       'Monto (BOB)': '' as unknown as number,
       'Monto (USD)': '',
@@ -54,6 +54,7 @@ export async function GET() {
       'Fecha': '',
       'Categoría': 'RESUMEN POR CATEGORÍA',
       'Proveedor / Concepto': '',
+      'Descripción / Items': '',
       'Tipo Comprobante': '',
       'Monto (BOB)': '' as unknown as number,
       'Monto (USD)': '',
@@ -66,6 +67,7 @@ export async function GET() {
         'Fecha': '',
         'Categoría': cat,
         'Proveedor / Concepto': '',
+        'Descripción / Items': '',
         'Tipo Comprobante': '',
         'Monto (BOB)': total,
         'Monto (USD)': '' as unknown as string,
@@ -78,6 +80,7 @@ export async function GET() {
       'Fecha': '',
       'Categoría': 'TOTAL GENERAL',
       'Proveedor / Concepto': '',
+      'Descripción / Items': '',
       'Tipo Comprobante': '',
       'Monto (BOB)': totalGeneral,
       'Monto (USD)': '' as unknown as string,
@@ -93,8 +96,9 @@ export async function GET() {
       { wch: 5 },   // N°
       { wch: 12 },  // Fecha
       { wch: 25 },  // Categoría
-      { wch: 30 },  // Proveedor
-      { wch: 25 },  // Tipo Comprobante
+      { wch: 28 },  // Proveedor
+      { wch: 35 },  // Descripción / Items
+      { wch: 30 },  // Tipo Comprobante
       { wch: 15 },  // Monto BOB
       { wch: 12 },  // Monto USD
       { wch: 50 },  // Enlace
