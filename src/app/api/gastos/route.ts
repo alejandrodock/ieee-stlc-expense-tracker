@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
         categoria: body.categoria,
         proveedor: body.proveedor,
         descripcion: body.descripcion || null,
+        observaciones: body.observaciones || null,
         tipo_comprobante: body.tipo_comprobante,
         monto_bob: body.monto_bob,
         monto_usd: body.monto_usd || null,

@@ -85,6 +85,14 @@ export default function GastosList({ gastos, onDelete }: GastosListProps) {
                 </div>
               )}
 
+              {/* Observaciones (Opcional) */}
+              {gasto.observaciones && (
+                <div className="mt-1.5 text-[11px] text-amber-200/90 bg-amber-500/10 rounded-lg px-2.5 py-1.5 border border-amber-500/20 flex items-start gap-1.5">
+                  <span className="font-semibold text-amber-400">Obs:</span>
+                  <span className="text-slate-300">{gasto.observaciones}</span>
+                </div>
+              )}
+
               <div className="flex items-center flex-wrap gap-2 mt-2.5">
                 <span className="text-xs text-slate-500">
                   {formatDate(gasto.fecha)}

@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Calendar, Tag, FileText, DollarSign,
-  Camera, Upload, Loader2, CheckCircle2, ChevronDown, Sparkles, ListChecks
+  Camera, Upload, Loader2, CheckCircle2, ChevronDown, Sparkles, ListChecks, MessageSquareQuote
 } from 'lucide-react';
 import {
   CATEGORIAS, TIPOS_COMPROBANTE, TIPO_CAMBIO_USD,
@@ -26,6 +26,7 @@ export default function NuevaCompraModal({
   const [categoria, setCategoria] = useState('');
   const [proveedor, setProveedor] = useState('');
   const [descripcion, setDescripcion] = useState('');
+  const [observaciones, setObservaciones] = useState('');
   const [tipoComprobante, setTipoComprobante] = useState('factura_ieee');
   const [montoBob, setMontoBob] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -46,6 +47,7 @@ export default function NuevaCompraModal({
     setCategoria('');
     setProveedor('');
     setDescripcion('');
+    setObservaciones('');
     setTipoComprobante('factura_ieee');
     setMontoBob('');
     setImageFile(null);
@@ -163,20 +165,34 @@ export default function NuevaCompraModal({
         doc.setTextColor(71, 85, 105);
         doc.text(`$ ${formatMonto(montoUsd)}`, 146, 44);
 
-        // Optional Items / Description
+        // Optional Items & Observaciones boxes
         let imageStartY = 64;
         if (descripcion && descripcion.trim().length > 0) {
           doc.setFillColor(241, 245, 249);
-          doc.roundedRect(12, 62, pageWidth - 24, 14, 2, 2, 'F');
+          doc.roundedRect(12, imageStartY - 2, pageWidth - 24, 13, 2, 2, 'F');
           doc.setTextColor(100, 116, 139);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(7.5);
-          doc.text('ITEMS / DETALLE DE COMPRA:', 16, 67);
+          doc.text('ITEMS / DETALLE DE COMPRA:', 16, imageStartY + 3);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(30, 41, 59);
           const splitDesc = doc.splitTextToSize(descripcion.trim(), pageWidth - 36);
-          doc.text(splitDesc, 16, 72);
-          imageStartY = 80;
+          doc.text(splitDesc, 16, imageStartY + 8);
+          imageStartY += 15;
+        }
+
+        if (observaciones && observaciones.trim().length > 0) {
+          doc.setFillColor(254, 243, 199); // Amber light
+          doc.roundedRect(12, imageStartY - 2, pageWidth - 24, 11, 2, 2, 'F');
+          doc.setTextColor(180, 83, 9);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.text('OBSERVACIONES:', 16, imageStartY + 3);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(120, 53, 15);
+          const splitObs = doc.splitTextToSize(observaciones.trim(), pageWidth - 36);
+          doc.text(splitObs, 16, imageStartY + 7);
+          imageStartY += 13;
         }
 
         // 3. Add receipt image
@@ -187,7 +203,7 @@ export default function NuevaCompraModal({
 
         const imgRatio = img.width / img.height;
         const maxImgWidth = pageWidth - 24;
-        const maxImgHeight = pageHeight - imageStartY - 10;
+        const maxImgHeight = pageHeight - imageStartY - 8;
         let finalWidth = maxImgWidth;
         let finalHeight = finalWidth / imgRatio;
 
@@ -234,6 +250,7 @@ export default function NuevaCompraModal({
           categoria,
           proveedor,
           descripcion: descripcion.trim() || null,
+          observaciones: observaciones.trim() || null,
           tipo_comprobante: tipoComprobante,
           monto_bob: montoNum,
           monto_usd: parseFloat(montoUsd.toFixed(2)),
@@ -306,7 +323,7 @@ export default function NuevaCompraModal({
           </div>
 
           <div className="p-6 space-y-5">
-            {/* STEP 1: Basic Info & Description */}
+            {/* STEP 1: Basic Info, Description & Observaciones */}
             {step === 1 && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
@@ -360,12 +377,12 @@ export default function NuevaCompraModal({
                     type="text"
                     value={proveedor}
                     onChange={e => setProveedor(e.target.value)}
-                    placeholder="Ej: Imprenta Gutenberg, Supermercado Hipermaxi..."
+                    placeholder="Ej: Imprenta Gutenberg, Hipermaxi..."
                     className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                   />
                 </div>
 
-                {/* Descripción / Elementos del recibo (NUEVO) */}
+                {/* Descripción / Elementos del recibo */}
                 <div className="space-y-1.5">
                   <label className="flex items-center justify-between text-xs font-medium text-slate-300">
                     <span className="flex items-center gap-2">
@@ -378,12 +395,30 @@ export default function NuevaCompraModal({
                     rows={2}
                     value={descripcion}
                     onChange={e => setDescripcion(e.target.value)}
-                    placeholder="Ej: 3 cajas de café, 200 vasos térmicos, 2 rollos de servilletas y azúcar..."
-                    className="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none transition-all"
+                    placeholder="Ej: 3 cajas de café, 200 vasos térmicos, azúcar y servilletas..."
+                    className="w-full px-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none transition-all"
                   />
                 </div>
 
-                {/* Tipo Comprobante (ACTUALIZADO: NIT IEEE vs CI Iván Mendoza vs Recibo) */}
+                {/* Observaciones (OPCIONAL) */}
+                <div className="space-y-1.5">
+                  <label className="flex items-center justify-between text-xs font-medium text-slate-300">
+                    <span className="flex items-center gap-2">
+                      <MessageSquareQuote className="w-3.5 h-3.5 text-amber-400" />
+                      Observaciones
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-normal">Opcional</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={observaciones}
+                    onChange={e => setObservaciones(e.target.value)}
+                    placeholder="Ej: Proveedor no tenía talonario de factura, descuento por pronto pago..."
+                    className="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                  />
+                </div>
+
+                {/* Tipo Comprobante */}
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-2 text-xs font-medium text-slate-300">
                     <FileText className="w-3.5 h-3.5 text-amber-400" />
@@ -635,6 +670,12 @@ export default function NuevaCompraModal({
                     <div className="flex justify-between gap-4">
                       <span className="text-slate-400 flex-shrink-0">Detalle:</span>
                       <span className="text-slate-300 text-right truncate">{descripcion}</span>
+                    </div>
+                  )}
+                  {observaciones && (
+                    <div className="flex justify-between gap-4">
+                      <span className="text-amber-400/90 flex-shrink-0">Observaciones:</span>
+                      <span className="text-slate-300 text-right truncate">{observaciones}</span>
                     </div>
                   )}
                   <div className="flex justify-between">

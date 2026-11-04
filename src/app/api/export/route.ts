@@ -21,6 +21,7 @@ export async function GET() {
       'Categoría': getCategoriaLabel(g.categoria),
       'Proveedor / Concepto': g.proveedor,
       'Descripción / Items': g.descripcion || 'Sin detalle específico',
+      'Observaciones': g.observaciones || '',
       'Tipo Comprobante': getTipoComprobanteLabel(g.tipo_comprobante),
       'Monto (BOB)': g.monto_bob,
       'Monto (USD)': g.monto_usd || '',
@@ -43,6 +44,7 @@ export async function GET() {
       'Categoría': '',
       'Proveedor / Concepto': '',
       'Descripción / Items': '',
+      'Observaciones': '',
       'Tipo Comprobante': '',
       'Monto (BOB)': '' as unknown as number,
       'Monto (USD)': '',
@@ -55,6 +57,7 @@ export async function GET() {
       'Categoría': 'RESUMEN POR CATEGORÍA',
       'Proveedor / Concepto': '',
       'Descripción / Items': '',
+      'Observaciones': '',
       'Tipo Comprobante': '',
       'Monto (BOB)': '' as unknown as number,
       'Monto (USD)': '',
@@ -68,6 +71,7 @@ export async function GET() {
         'Categoría': cat,
         'Proveedor / Concepto': '',
         'Descripción / Items': '',
+        'Observaciones': '',
         'Tipo Comprobante': '',
         'Monto (BOB)': total,
         'Monto (USD)': '' as unknown as string,
@@ -81,6 +85,7 @@ export async function GET() {
       'Categoría': 'TOTAL GENERAL',
       'Proveedor / Concepto': '',
       'Descripción / Items': '',
+      'Observaciones': '',
       'Tipo Comprobante': '',
       'Monto (BOB)': totalGeneral,
       'Monto (USD)': '' as unknown as string,
@@ -98,6 +103,7 @@ export async function GET() {
       { wch: 25 },  // Categoría
       { wch: 28 },  // Proveedor
       { wch: 35 },  // Descripción / Items
+      { wch: 30 },  // Observaciones
       { wch: 30 },  // Tipo Comprobante
       { wch: 15 },  // Monto BOB
       { wch: 12 },  // Monto USD

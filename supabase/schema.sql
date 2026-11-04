@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS gastos (
   categoria TEXT NOT NULL CHECK (categoria IN ('catering', 'transporte', 'imprenta', 'hackathon', 'materiales')),
   proveedor TEXT NOT NULL,
   descripcion TEXT,
+  observaciones TEXT,
   tipo_comprobante TEXT NOT NULL CHECK (tipo_comprobante IN ('factura', 'factura_ieee', 'factura_personal', 'recibo')),
   monto_bob DECIMAL(12, 2) NOT NULL CHECK (monto_bob > 0),
   monto_usd DECIMAL(12, 2),
@@ -23,8 +24,9 @@ CREATE TABLE IF NOT EXISTS gastos (
   imagen_original TEXT
 );
 
--- In case the table already exists, ensure the descripcion column is present and constraint is updated:
+-- In case the table already exists, ensure the new columns and constraint are updated:
 ALTER TABLE gastos ADD COLUMN IF NOT EXISTS descripcion TEXT;
+ALTER TABLE gastos ADD COLUMN IF NOT EXISTS observaciones TEXT;
 ALTER TABLE gastos DROP CONSTRAINT IF EXISTS gastos_tipo_comprobante_check;
 ALTER TABLE gastos ADD CONSTRAINT gastos_tipo_comprobante_check CHECK (tipo_comprobante IN ('factura', 'factura_ieee', 'factura_personal', 'recibo'));
 
