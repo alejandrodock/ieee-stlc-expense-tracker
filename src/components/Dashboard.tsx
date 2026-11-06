@@ -8,24 +8,27 @@ import GastosList from '@/components/GastosList';
 import NuevaCompraModal from '@/components/NuevaCompraModal';
 import ExportButton from '@/components/ExportButton';
 import { PRESUPUESTO_INICIAL } from '@/lib/constants';
-import type { Gasto } from '@/lib/supabase';
+import type { Gasto } from '@/lib/types';
 
 export default function Dashboard() {
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchGastos = useCallback(async (showRefresh = false) => {
     if (showRefresh) setIsRefreshing(true);
     try {
-      const res = await fetch('/api/gastos');
-      if (res.ok) {
-        const data = await res.json();
-        setGastos(data);
-      }
+      const res = await fetch('/api/gastos', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: Gasto[] = await res.json();
+      setGastos(data.map((g) => ({ ...g, monto_bob: Number(g.monto_bob), monto_usd: g.monto_usd == null ? null : Number(g.monto_usd) })));
+      setLoadError(null);
     } catch (error) {
       console.error('Error fetching gastos:', error);
+      // Never show an empty list / full budget when data failed to load.
+      setLoadError('No se pudieron cargar los gastos. El saldo mostrado puede no estar actualizado.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -43,11 +46,11 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
-      if (res.ok) {
-        setGastos(prev => prev.filter(g => g.id !== id));
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setGastos(prev => prev.filter(g => g.id !== id));
     } catch (error) {
       console.error('Delete error:', error);
+      alert('No se pudo eliminar el gasto. Inténtalo de nuevo.');
     }
   };
 
@@ -104,6 +107,12 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-lg mx-auto px-4 py-6 pb-28 space-y-6">
+        {loadError && (
+          <div role="alert" className="flex items-start justify-between gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-200">
+            <span>{loadError}</span>
+            <button onClick={() => fetchGastos(true)} className="underline whitespace-nowrap">Reintentar</button>
+          </div>
+        )}
         <BudgetOverview gastos={gastos} />
         <GastosList gastos={gastos} onDelete={handleDelete} />
       </main>

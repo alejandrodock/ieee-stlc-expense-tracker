@@ -8,20 +8,21 @@ export const CATEGORIAS = [
 
 export const TIPOS_COMPROBANTE = [
   { value: 'factura_ieee', label: 'Factura Oficial (NIT IEEE Sección Bolivia)' },
-  { value: 'factura_personal', label: 'Factura Oficial (C.I. Iván Mendoza)' },
+  { value: 'factura_personal', label: 'Factura Oficial (C.I. Ivan Mendoza)' },
   { value: 'recibo', label: 'Recibo de Caja' },
 ] as const;
 
 export const PRESUPUESTO_INICIAL = 13618.08; // BOB
 
-export const TIPO_CAMBIO_USD = 6.96; // BOB per USD (approximate)
+/** Bolivianos por dólar usados para el equivalente en USD de la rendición. */
+export const TIPO_CAMBIO_USD = 11.58;
 
 export type CategoriaValue = typeof CATEGORIAS[number]['value'];
 export type TipoComprobanteValue = typeof TIPOS_COMPROBANTE[number]['value'] | 'factura';
 
 export function getTipoComprobanteLabel(value: string): string {
   if (value === 'factura' || value === 'factura_ieee') return 'Factura Oficial (NIT IEEE)';
-  if (value === 'factura_personal') return 'Factura Oficial (C.I. Iván Mendoza)';
+  if (value === 'factura_personal') return 'Factura Oficial (C.I. Ivan Mendoza)';
   if (value === 'recibo') return 'Recibo de Caja';
   return value;
 }
@@ -74,4 +75,15 @@ export function formatDate(dateStr: string): string {
     month: 'short',
     year: 'numeric',
   }).format(date);
+}
+
+/** Today's date (YYYY-MM-DD) in the device's local time zone – not UTC. */
+export function todayLocal(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+export function formatTipoCambio(): string {
+  return TIPO_CAMBIO_USD.toLocaleString('es-BO', { minimumFractionDigits: 2 });
 }

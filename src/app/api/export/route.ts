@@ -1,131 +1,91 @@
-import { NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase';
+import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
-import { getCategoriaLabel, getTipoComprobanteLabel } from '@/lib/constants';
+import { getServerSupabase } from '@/lib/server/supabase';
+import { getCategoriaLabel, getTipoComprobanteLabel, TIPO_CAMBIO_USD } from '@/lib/constants';
+import { GASTO_COLUMNS, type Gasto } from '@/lib/types';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+const HEADERS = [
+  'N°', 'Fecha', 'Categoría', 'Proveedor / Concepto', 'Descripción / Items', 'Observaciones',
+  'Tipo Comprobante', 'Monto (BOB)', 'Monto (USD)', 'Enlace Comprobante',
+] as const;
+
+export async function GET(req: NextRequest) {
   try {
-    const supabase = createServerSupabase();
-
-    const { data: gastos, error } = await supabase
+    const { data, error } = await getServerSupabase()
       .from('gastos')
-      .select('*')
-      .order('fecha', { ascending: true });
-
+      .select(GASTO_COLUMNS)
+      .order('fecha', { ascending: true })
+      .order('created_at', { ascending: true });
     if (error) throw error;
+    const gastos = (data ?? []) as Gasto[];
 
-    // Prepare data for Excel
-    const rows = (gastos || []).map((g, index) => ({
-      'N°': index + 1,
-      'Fecha': g.fecha,
-      'Categoría': getCategoriaLabel(g.categoria),
-      'Proveedor / Concepto': g.proveedor,
-      'Descripción / Items': g.descripcion || 'Sin detalle específico',
-      'Observaciones': g.observaciones || '',
-      'Tipo Comprobante': getTipoComprobanteLabel(g.tipo_comprobante),
-      'Monto (BOB)': g.monto_bob,
-      'Monto (USD)': g.monto_usd || '',
-      'Enlace Comprobante': g.drive_url || 'Pendiente',
-    }));
+    const origin = new URL(req.url).origin;
+    const link = (g: Gasto) => (g.pdf_url ? `${origin}${g.pdf_url}` : g.drive_url ?? 'Sin comprobante');
 
-    // Calculate totals by category
-    const totalsByCategory: Record<string, number> = {};
-    (gastos || []).forEach(g => {
+    const rows: (string | number)[][] = [HEADERS.slice()];
+    gastos.forEach((g, i) => {
+      rows.push([
+        i + 1,
+        g.fecha,
+        getCategoriaLabel(g.categoria),
+        g.proveedor,
+        g.descripcion ?? '',
+        g.observaciones ?? '',
+        getTipoComprobanteLabel(g.tipo_comprobante),
+        Number(g.monto_bob),
+        g.monto_usd != null ? Number(g.monto_usd) : '',
+        link(g),
+      ]);
+    });
+
+    const totals = new Map<string, number>();
+    for (const g of gastos) {
       const cat = getCategoriaLabel(g.categoria);
-      totalsByCategory[cat] = (totalsByCategory[cat] || 0) + g.monto_bob;
+      totals.set(cat, (totals.get(cat) ?? 0) + Number(g.monto_bob));
+    }
+    const totalGeneral = gastos.reduce((s, g) => s + Number(g.monto_bob), 0);
+    const blank = () => Array<string>(HEADERS.length).fill('');
+    const summaryRow = (label: string, bob: number | '', usd: number | '' = '') => {
+      const r: (string | number)[] = blank();
+      r[2] = label; r[7] = bob; r[8] = usd;
+      return r;
+    };
+
+    rows.push(blank());
+    rows.push(summaryRow('RESUMEN POR CATEGORÍA', ''));
+    for (const [cat, total] of totals) rows.push(summaryRow(cat, round2(total), round2(total / TIPO_CAMBIO_USD)));
+    rows.push(summaryRow('TOTAL GENERAL', round2(totalGeneral), round2(totalGeneral / TIPO_CAMBIO_USD)));
+    rows.push(summaryRow(`Tipo de cambio: ${TIPO_CAMBIO_USD} Bs/USD`, ''));
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [5, 12, 25, 28, 40, 32, 34, 14, 12, 55].map((wch) => ({ wch }));
+    // Make receipt links clickable
+    gastos.forEach((g, i) => {
+      const href = link(g);
+      if (href.startsWith('http')) {
+        const cell = ws[XLSX.utils.encode_cell({ r: i + 1, c: 9 })];
+        if (cell) cell.l = { Target: href };
+      }
     });
 
-    const totalGeneral = (gastos || []).reduce((sum, g) => sum + g.monto_bob, 0);
-
-    // Add empty row and summary
-    rows.push({
-      'N°': '' as unknown as number,
-      'Fecha': '',
-      'Categoría': '',
-      'Proveedor / Concepto': '',
-      'Descripción / Items': '',
-      'Observaciones': '',
-      'Tipo Comprobante': '',
-      'Monto (BOB)': '' as unknown as number,
-      'Monto (USD)': '',
-      'Enlace Comprobante': '',
-    });
-
-    rows.push({
-      'N°': '' as unknown as number,
-      'Fecha': '',
-      'Categoría': 'RESUMEN POR CATEGORÍA',
-      'Proveedor / Concepto': '',
-      'Descripción / Items': '',
-      'Observaciones': '',
-      'Tipo Comprobante': '',
-      'Monto (BOB)': '' as unknown as number,
-      'Monto (USD)': '',
-      'Enlace Comprobante': '',
-    });
-
-    Object.entries(totalsByCategory).forEach(([cat, total]) => {
-      rows.push({
-        'N°': '' as unknown as number,
-        'Fecha': '',
-        'Categoría': cat,
-        'Proveedor / Concepto': '',
-        'Descripción / Items': '',
-        'Observaciones': '',
-        'Tipo Comprobante': '',
-        'Monto (BOB)': total,
-        'Monto (USD)': '' as unknown as string,
-        'Enlace Comprobante': '',
-      });
-    });
-
-    rows.push({
-      'N°': '' as unknown as number,
-      'Fecha': '',
-      'Categoría': 'TOTAL GENERAL',
-      'Proveedor / Concepto': '',
-      'Descripción / Items': '',
-      'Observaciones': '',
-      'Tipo Comprobante': '',
-      'Monto (BOB)': totalGeneral,
-      'Monto (USD)': '' as unknown as string,
-      'Enlace Comprobante': '',
-    });
-
-    // Create workbook
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(rows);
-
-    // Set column widths
-    ws['!cols'] = [
-      { wch: 5 },   // N°
-      { wch: 12 },  // Fecha
-      { wch: 25 },  // Categoría
-      { wch: 28 },  // Proveedor
-      { wch: 35 },  // Descripción / Items
-      { wch: 30 },  // Observaciones
-      { wch: 30 },  // Tipo Comprobante
-      { wch: 15 },  // Monto BOB
-      { wch: 12 },  // Monto USD
-      { wch: 50 },  // Enlace
-    ];
-
     XLSX.utils.book_append_sheet(wb, ws, 'Rendición STLC 2026');
+    const buffer: Buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
-    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="Rendicion_STLC_2026_IEEE.xlsx"`,
+        'Content-Disposition': 'attachment; filename="Rendicion_STLC_2026_IEEE.xlsx"',
+        'Cache-Control': 'no-store',
       },
     });
   } catch (error) {
     console.error('Export error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate report' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'No se pudo generar el reporte' }, { status: 500 });
   }
 }
+
+const round2 = (n: number) => Math.round(n * 100) / 100;

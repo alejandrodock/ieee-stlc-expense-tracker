@@ -10,106 +10,54 @@
 ## ✨ Funcionalidades
 
 - 📊 **Dashboard en tiempo real** — Saldo restante, total gastado, desglose por categorías
-- 📝 **Registro de compras** — Formulario multi-step con calculadora automática de descuento
-- 📸 **Escaneo tipo CamScanner** — Procesamiento de imágenes (escala de grises, contraste, nitidez)
-- 📄 **Conversión automática a PDF** — Con nomenclatura estricta `YYYYMMDD_Categoria_Proveedor_MontoBOB.pdf`
-- ☁️ **Subida a Google Drive** — Automática a carpeta `STLC_2026_Facturas_Y_Recibos`
-- 📈 **Exportación Excel** — Rendición oficial con totales por categoría y enlaces a comprobantes
-- 📱 **PWA Mobile-First** — Instalable como app nativa en celulares
+- 📝 **Registro de compras** — Formulario de 3 pasos con calculadora de saldo y equivalente USD (T.C. 11,58)
+- 📸 **Escáner tipo CamScanner (en el celular)** — Detección automática de bordes, ajuste manual de esquinas con lupa, corrección de perspectiva, giro y filtros *Color nítido* / *Grises* / *Original*. El filtro por defecto elimina sombras, deja el papel blanco y resalta la letra sin aspecto de fotocopia
+- 📎 **Recibos digitales en PDF** — Se adjuntan tal cual, con una portada de rendición al inicio
+- 📄 **PDF de auditoría** — Encabezado IEEE, datos del gasto y comprobante; nombre `YYYYMMDD_Categoria_Proveedor_MontoBOB.pdf`
+- 🔒 **Almacenamiento privado** — PDFs en Supabase Storage (bucket privado `comprobantes`), servidos con URLs firmadas de corta duración
+- 📈 **Exportación Excel** — Rendición con totales por categoría y enlaces a cada comprobante
+- 📱 **PWA Mobile-First** — Instalable como app
 
 ## 🏗️ Arquitectura
 
 ```
 src/
-├── app/
-│   ├── api/
-│   │   ├── gastos/          # CRUD de gastos (Supabase)
-│   │   ├── process-image/   # Procesamiento de imagen (Sharp)
-│   │   ├── upload-drive/    # Subida a Google Drive
-│   │   └── export/          # Generación Excel (.xlsx)
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
+├── app/api/
+│   ├── gastos/               # GET (liviano) · POST (validado) · DELETE (+ borra comprobante)
+│   ├── comprobantes/         # POST: URL firmada de subida directa a Storage
+│   ├── comprobantes/[id]/    # GET: redirige a una URL firmada del PDF
+│   └── export/               # Excel (.xlsx)
 ├── components/
-│   ├── Dashboard.tsx        # Página principal
-│   ├── BudgetOverview.tsx   # Resumen de presupuesto
-│   ├── GastosList.tsx       # Lista de gastos recientes
-│   ├── NuevaCompraModal.tsx # Formulario multi-step
-│   └── ExportButton.tsx     # Botón de exportación
-├── lib/
-│   ├── supabase.ts          # Cliente Supabase
-│   └── constants.ts         # Categorías, utilidades
-public/
-├── manifest.json            # PWA manifest
-├── sw.js                    # Service Worker
-└── icons/                   # Íconos PWA
+│   ├── scanner/              # DocumentScanner + CornerEditor (UI del escáner)
+│   └── …                     # Dashboard, NuevaCompraModal, GastosList, …
+└── lib/
+    ├── scanner/core.ts       # Detección (Hough), perspectiva y realce — sin dependencias
+    ├── scanner/*.worker.ts   # Procesamiento en Web Worker (UI fluida en el celular)
+    ├── pdf/comprobante.ts    # Generación de PDF con pdf-lib
+    └── server/               # Supabase (service role), Storage, validación, Drive opcional
 supabase/
-└── schema.sql               # Esquema de base de datos
+├── schema.sql                # Esquema completo (instalación nueva)
+└── migrations/               # Cambios incrementales (ejecutar en SQL Editor)
 ```
 
-## 🚀 Configuración Rápida
+**Flujo de un gasto:** foto → escaneo en el navegador → PDF (pdf-lib) → subida directa a Supabase Storage con URL firmada (no pasa por la función serverless, evitando el límite de 4,5 MB de Vercel) → registro en la tabla `gastos`.
 
-### 1. Clonar el repositorio
+## 🚀 Configuración
 
-```bash
-git clone https://github.com/alejandro-dock/ieee-stlc-expense-tracker.git
-cd ieee-stlc-expense-tracker
-npm install
-```
+1. `npm install`
+2. En Supabase > SQL Editor ejecutar `supabase/schema.sql` (proyecto nuevo) o los archivos de `supabase/migrations/` (proyecto existente).
+3. Crear `.env.local` a partir de `.env.example`.
+4. `npm run dev` y abrir http://localhost:3000
 
-### 2. Configurar Supabase
+El bucket privado `comprobantes` se crea automáticamente en la primera subida.
 
-1. Crear un proyecto en [supabase.com](https://supabase.com)
-2. Ir al **SQL Editor** y ejecutar el contenido de `supabase/schema.sql`
-3. Copiar las credenciales del proyecto
+### Copia opcional en Google Drive
 
-### 3. Configurar Google Drive API
+Si se define `GOOGLE_DRIVE_FOLDER_ID` (más las credenciales de la service account), cada PDF se copia a Drive en segundo plano. **La carpeta debe estar en una Unidad compartida (Google Workspace)** donde la service account sea miembro: una service account no tiene cuota propia y no puede subir a carpetas de “Mi unidad” de una cuenta Gmail.
 
-1. Crear un proyecto en [Google Cloud Console](https://console.cloud.google.com)
-2. Habilitar la **Google Drive API**
-3. Crear una **Service Account** y descargar la clave JSON
-4. Crear una carpeta en Google Drive llamada `STLC_2026_Facturas_Y_Recibos`
-5. Compartir la carpeta con el email de la Service Account (permisos de Editor)
-6. Copiar el ID de la carpeta (de la URL)
+## ☁️ Despliegue
 
-### 4. Variables de Entorno
-
-Crear archivo `.env.local` basado en `.env.example`:
-
-```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6...
-
-# Google Drive API (Service Account)
-GOOGLE_DRIVE_CLIENT_EMAIL=expense-tracker@project.iam.gserviceaccount.com
-GOOGLE_DRIVE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
-GOOGLE_DRIVE_FOLDER_ID=1AbCdEfGhIjKlMnOpQrStUvWxYz
-```
-
-### 5. Ejecutar en desarrollo
-
-```bash
-npm run dev
-```
-
-Abrir [http://localhost:3000](http://localhost:3000)
-
-## ☁️ Despliegue en Vercel (Un Clic)
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/alejandro-dock/ieee-stlc-expense-tracker)
-
-1. Hacer clic en el botón de arriba
-2. Conectar con GitHub
-3. Agregar las **5 variables de entorno** en la configuración de Vercel:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `GOOGLE_DRIVE_CLIENT_EMAIL`
-   - `GOOGLE_DRIVE_PRIVATE_KEY`
-   - `GOOGLE_DRIVE_FOLDER_ID`
-4. ¡Deploy!
+El proyecto de Vercel está conectado a este repositorio: cada `git push` a `main` despliega a producción. Variables de entorno necesarias en Vercel: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (y las de Drive si se usa la copia opcional).
 
 ## 📋 Categorías de Presupuesto
 
@@ -125,12 +73,12 @@ Abrir [http://localhost:3000](http://localhost:3000)
 
 | Tecnología | Uso |
 |-----------|-----|
-| **Next.js 15** | Framework full-stack |
+| **Next.js 15.5** | Framework full-stack |
 | **Tailwind CSS 4** | Diseño UI |
 | **Supabase** | Base de datos PostgreSQL |
-| **Sharp** | Procesamiento de imágenes |
-| **jsPDF** | Generación de PDFs |
-| **Google Drive API** | Almacenamiento de comprobantes |
+| **Canvas + Web Worker** | Escáner de documentos (sin dependencias) |
+| **pdf-lib** | Generación y unión de PDFs |
+| **Supabase Storage** | Comprobantes PDF (bucket privado) |
 | **SheetJS (xlsx)** | Exportación Excel |
 | **Framer Motion** | Animaciones |
 | **Lucide React** | Íconos |

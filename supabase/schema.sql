@@ -35,14 +35,12 @@ CREATE INDEX IF NOT EXISTS idx_gastos_fecha ON gastos(fecha DESC);
 CREATE INDEX IF NOT EXISTS idx_gastos_categoria ON gastos(categoria);
 CREATE INDEX IF NOT EXISTS idx_gastos_created_at ON gastos(created_at DESC);
 
--- Enable Row Level Security (optional, for production)
+-- Row Level Security ON with no policies: the anon key gets no access.
+-- The app only talks to the table from the server with the service-role key
+-- (which bypasses RLS). Receipts live in the private Storage bucket "comprobantes",
+-- created automatically by the app on first upload.
 ALTER TABLE gastos ENABLE ROW LEVEL SECURITY;
-
--- Create a policy that allows all operations (adjust for production)
-CREATE POLICY "Allow all operations" ON gastos
-  FOR ALL
-  USING (true)
-  WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all operations" ON gastos;
 
 -- Create a view for summary by category
 CREATE OR REPLACE VIEW resumen_categorias AS
@@ -56,3 +54,6 @@ SELECT
 FROM gastos
 GROUP BY categoria
 ORDER BY total_bob DESC;
+
+-- Not exposed through the public API
+REVOKE ALL ON resumen_categorias FROM anon, authenticated;

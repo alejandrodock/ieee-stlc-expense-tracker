@@ -3,14 +3,14 @@
 import { motion } from 'framer-motion';
 import { TrendingDown, Wallet, PieChart } from 'lucide-react';
 import { CATEGORIAS, PRESUPUESTO_INICIAL, formatMonto } from '@/lib/constants';
-import type { Gasto } from '@/lib/supabase';
+import type { Gasto } from '@/lib/types';
 
 interface BudgetOverviewProps {
   gastos: Gasto[];
 }
 
 export default function BudgetOverview({ gastos }: BudgetOverviewProps) {
-  const totalGastado = gastos.reduce((sum, g) => sum + g.monto_bob, 0);
+  const totalGastado = gastos.reduce((sum, g) => sum + Number(g.monto_bob), 0);
   const saldoRestante = PRESUPUESTO_INICIAL - totalGastado;
   const porcentajeGastado = (totalGastado / PRESUPUESTO_INICIAL) * 100;
 
@@ -18,7 +18,7 @@ export default function BudgetOverview({ gastos }: BudgetOverviewProps) {
   const gastosPorCategoria = CATEGORIAS.map(cat => {
     const total = gastos
       .filter(g => g.categoria === cat.value)
-      .reduce((sum, g) => sum + g.monto_bob, 0);
+      .reduce((sum, g) => sum + Number(g.monto_bob), 0);
     return { ...cat, total };
   }).filter(c => c.total > 0);
 
@@ -98,7 +98,7 @@ export default function BudgetOverview({ gastos }: BudgetOverviewProps) {
           </h3>
           <div className="space-y-3">
             {gastosPorCategoria.map((cat, i) => {
-              const percentage = (cat.total / totalGastado) * 100;
+              const percentage = totalGastado > 0 ? (cat.total / totalGastado) * 100 : 0;
               return (
                 <motion.div
                   key={cat.value}

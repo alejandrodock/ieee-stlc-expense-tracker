@@ -8,7 +8,7 @@ import {
   getCategoriaLabel, getCategoriaIcon, getCategoriaColor,
   getTipoComprobanteLabel, formatMonto, formatDate
 } from '@/lib/constants';
-import type { Gasto } from '@/lib/supabase';
+import type { Gasto } from '@/lib/types';
 
 interface GastosListProps {
   gastos: Gasto[];
@@ -69,7 +69,7 @@ export default function GastosList({ gastos, onDelete }: GastosListProps) {
                   <p className="text-sm font-bold text-white">
                     Bs. {formatMonto(gasto.monto_bob)}
                   </p>
-                  {gasto.monto_usd && (
+                  {gasto.monto_usd != null && gasto.monto_usd > 0 && (
                     <p className="text-xs text-slate-400">
                       ≈ $ {formatMonto(gasto.monto_usd)}
                     </p>
@@ -103,15 +103,15 @@ export default function GastosList({ gastos, onDelete }: GastosListProps) {
                 </span>
 
                 {/* Comprobante Status */}
-                {gasto.drive_url ? (
+                {gasto.pdf_url || gasto.drive_url ? (
                   <a
-                    href={gasto.drive_url}
+                    href={gasto.pdf_url ?? gasto.drive_url!}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors ml-auto bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20"
                   >
                     <FileCheck className="w-3 h-3" />
-                    En Drive
+                    Ver PDF
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 ) : (
@@ -120,23 +120,23 @@ export default function GastosList({ gastos, onDelete }: GastosListProps) {
                     Sin comprobante
                   </span>
                 )}
+
+                {onDelete && (
+                  <button
+                    onClick={() => {
+                      if (confirm(`¿Eliminar gasto de ${gasto.proveedor} (Bs. ${formatMonto(gasto.monto_bob)})? También se borrará su comprobante.`)) {
+                        onDelete(gasto.id);
+                      }
+                    }}
+                    className="p-1.5 -my-1 rounded-lg text-slate-500 hover:bg-red-500/20 hover:text-red-400 transition-colors"
+                    title="Eliminar gasto"
+                    aria-label={`Eliminar gasto de ${gasto.proveedor}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
-
-            {/* Delete Button */}
-            {onDelete && (
-              <button
-                onClick={() => {
-                  if (confirm(`¿Eliminar gasto de ${gasto.proveedor} (Bs. ${formatMonto(gasto.monto_bob)})?`)) {
-                    onDelete(gasto.id);
-                  }
-                }}
-                className="opacity-0 group-hover:opacity-100 absolute top-2 right-2 p-1.5 rounded-lg hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-all"
-                title="Eliminar gasto"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
         </motion.div>
       ))}
