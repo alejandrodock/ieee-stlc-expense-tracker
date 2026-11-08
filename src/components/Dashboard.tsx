@@ -7,6 +7,7 @@ import BudgetOverview from '@/components/BudgetOverview';
 import GastosList from '@/components/GastosList';
 import NuevaCompraModal from '@/components/NuevaCompraModal';
 import ExportButton from '@/components/ExportButton';
+import { Logo, LogoMark } from '@/components/Logo';
 import { PRESUPUESTO_INICIAL } from '@/lib/constants';
 import type { Gasto } from '@/lib/types';
 
@@ -59,46 +60,37 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center gap-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center gap-5"
         >
-          <div className="relative">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/30">
-              <span className="text-2xl font-bold text-white">IE</span>
-            </div>
-            <Loader2 className="w-6 h-6 text-blue-400 animate-spin absolute -bottom-1 -right-1" />
+          <LogoMark className="w-14 h-14" />
+          <div className="flex items-center gap-2 text-xs text-muted">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            Cargando…
           </div>
-          <p className="text-sm text-slate-400 animate-pulse">Cargando ExpenseTracker...</p>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-xl border-b border-white/5">
+      <header className="sticky top-0 z-40 bg-ink-950/90 backdrop-blur-md border-b border-line">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <span className="text-sm font-bold text-white">IE</span>
-            </div>
-            <div>
-              <h1 className="text-sm font-bold text-white leading-tight">IEEE STLC</h1>
-              <p className="text-[10px] text-slate-400 leading-tight">ExpenseTracker</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
+          <Logo />
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => fetchGastos(true)}
               disabled={isRefreshing}
-              className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+              className="p-2 rounded-lg text-muted hover:text-fg hover:bg-white/5 transition-colors"
               title="Actualizar"
+              aria-label="Actualizar"
             >
-              <RefreshCw className={`w-4 h-4 text-slate-400 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
             <ExportButton />
           </div>
@@ -108,7 +100,7 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="max-w-lg mx-auto px-4 py-6 pb-28 space-y-6">
         {loadError && (
-          <div role="alert" className="flex items-start justify-between gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-200">
+          <div role="alert" className="flex items-start justify-between gap-3 p-3 rounded-xl bg-bad/10 border border-bad/30 text-xs text-bad">
             <span>{loadError}</span>
             <button onClick={() => fetchGastos(true)} className="underline whitespace-nowrap">Reintentar</button>
           </div>
@@ -120,12 +112,13 @@ export default function Dashboard() {
       {/* Floating Action Button */}
       <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-[calc(50%-240px+24px)] z-40">
         <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          whileTap={{ scale: 0.96 }}
           onClick={() => setIsModalOpen(true)}
-          className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 text-white shadow-2xl shadow-blue-500/40 flex items-center justify-center hover:shadow-blue-500/60 transition-shadow"
+          aria-label="Registrar compra"
+          className="h-12 pl-4 pr-5 rounded-full bg-brand hover:bg-brand-hover text-white text-sm font-medium flex items-center gap-2 shadow-lg shadow-black/40 ring-1 ring-white/10 transition-colors"
         >
-          <Plus className="w-7 h-7" />
+          <Plus className="w-4 h-4" strokeWidth={2.25} />
+          Registrar compra
         </motion.button>
       </div>
 

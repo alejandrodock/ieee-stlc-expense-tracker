@@ -1,11 +1,11 @@
 {
-  "name": "IEEE STLC ExpenseTracker",
-  "short_name": "ExpenseTracker",
+  "name": "IEEE STLC · Rendición de fondos",
+  "short_name": "IEEE STLC",
   "description": "Gestión de compras y rendición de fondos IEEE STLC 2026",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#020617",
+  "background_color": "#07121f",
+  "theme_color": "#07121f",
   "orientation": "portrait",
   "categories": ["finance", "productivity"],
   "icons": [

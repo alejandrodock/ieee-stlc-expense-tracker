@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Loader2, Crop, RotateCcw, RotateCw, Maximize, ScanLine, Sparkles, CheckCircle2, AlertTriangle,
+  Loader2, Crop, RotateCcw, RotateCw, Maximize, ScanLine, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import CornerEditor from './CornerEditor';
 import {
@@ -97,7 +97,7 @@ export default function DocumentScanner({ file, onScanChange }: DocumentScannerP
 
   if (phase === 'error') {
     return (
-      <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-300 flex items-start gap-2">
+      <div className="p-4 rounded-xl bg-bad/10 border border-bad/30 text-sm text-bad flex items-start gap-2">
         <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
         <span>{error ?? 'Error al procesar la imagen'}. Prueba con otra foto.</span>
       </div>
@@ -106,9 +106,9 @@ export default function DocumentScanner({ file, onScanChange }: DocumentScannerP
 
   if (phase === 'loading' || !source || !quad) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-12 rounded-xl border border-slate-700/50 bg-slate-900/60">
-        <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
-        <p className="text-xs text-slate-400">Detectando bordes del documento…</p>
+      <div className="flex flex-col items-center justify-center gap-3 py-12 rounded-xl border border-line bg-ink-900/60">
+        <Loader2 className="w-6 h-6 text-brand-soft animate-spin" />
+        <p className="text-xs text-muted">Detectando bordes del documento…</p>
       </div>
     );
   }
@@ -119,8 +119,8 @@ export default function DocumentScanner({ file, onScanChange }: DocumentScannerP
     <div className="space-y-3">
       {showEditor ? (
         <>
-          <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
-            <Crop className="w-3.5 h-3.5 text-cyan-400" />
+          <p className="text-[11px] text-muted flex items-center gap-1.5">
+            <Crop className="w-3.5 h-3.5 text-brand-soft" />
             {detected
               ? 'Bordes detectados. Arrastra las esquinas si hace falta afinar.'
               : 'No se detectaron bordes claros: arrastra las 4 esquinas al borde del papel.'}
@@ -139,7 +139,7 @@ export default function DocumentScanner({ file, onScanChange }: DocumentScannerP
               type="button"
               disabled={busy}
               onClick={() => setQuad(detected ?? fullImageQuad(source.width, source.height))}
-              className="py-2 rounded-lg bg-slate-800 border border-slate-700/60 text-xs text-slate-300 hover:bg-slate-700 flex items-center justify-center gap-1.5 disabled:opacity-50"
+              className="py-2 rounded-lg bg-ink-800 border border-line text-xs text-fg/80 hover:bg-white/10 flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
               <ScanLine className="w-3.5 h-3.5" /> Bordes automáticos
             </button>
@@ -147,7 +147,7 @@ export default function DocumentScanner({ file, onScanChange }: DocumentScannerP
               type="button"
               disabled={busy}
               onClick={() => setQuad(fullImageQuad(source.width, source.height))}
-              className="py-2 rounded-lg bg-slate-800 border border-slate-700/60 text-xs text-slate-300 hover:bg-slate-700 flex items-center justify-center gap-1.5 disabled:opacity-50"
+              className="py-2 rounded-lg bg-ink-800 border border-line text-xs text-fg/80 hover:bg-white/10 flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
               <Maximize className="w-3.5 h-3.5" /> Imagen completa
             </button>
@@ -156,24 +156,24 @@ export default function DocumentScanner({ file, onScanChange }: DocumentScannerP
             type="button"
             disabled={busy}
             onClick={() => run(quad, mode, rotation)}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-md shadow-violet-900/30 disabled:opacity-60"
+            className="w-full py-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
           >
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crop className="w-4 h-4" />}
             {busy ? 'Escaneando…' : 'Recortar y escanear'}
           </button>
         </>
       ) : (
         <>
-          <div className="relative rounded-xl overflow-hidden border border-slate-700/50 bg-slate-100">
+          <div className="relative rounded-xl overflow-hidden border border-line bg-slate-100">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={result?.previewUrl} alt="Documento escaneado" className="w-full max-h-[52vh] object-contain" />
             {phase === 'processing' && (
-              <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center">
+              <div className="absolute inset-0 bg-ink-950/40 flex items-center justify-center">
                 <Loader2 className="w-6 h-6 text-white animate-spin" />
               </div>
             )}
             {phase === 'result' && (
-              <div className="absolute top-2 left-2 px-2.5 py-1 rounded-full bg-emerald-600/90 text-white text-[11px] font-semibold flex items-center gap-1.5 shadow">
+              <div className="absolute top-2 left-2 px-2.5 py-1 rounded-full bg-ink-950/85 text-fg text-[11px] font-medium flex items-center gap-1.5 border border-line">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Escaneado
               </div>
             )}
@@ -191,8 +191,8 @@ export default function DocumentScanner({ file, onScanChange }: DocumentScannerP
                 onClick={() => { setMode(m.value); run(quad, m.value, rotation); }}
                 className={`py-2 rounded-lg text-[11px] font-medium border transition-colors disabled:opacity-60 ${
                   mode === m.value
-                    ? 'bg-cyan-500/20 border-cyan-400/60 text-cyan-200'
-                    : 'bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800'
+                    ? 'bg-brand/15 border-brand-soft/50 text-fg'
+                    : 'bg-ink-800/60 border-line text-fg/80 hover:bg-ink-800'
                 }`}
               >
                 {m.label}
@@ -204,21 +204,21 @@ export default function DocumentScanner({ file, onScanChange }: DocumentScannerP
             <button
               type="button" disabled={busy}
               onClick={() => { const r = rotation - 1; setRotation(r); run(quad, mode, r); }}
-              className="py-2 rounded-lg bg-slate-800 border border-slate-700/60 text-[11px] text-slate-300 flex items-center justify-center gap-1 disabled:opacity-60"
+              className="py-2 rounded-lg bg-ink-800 border border-line text-[11px] text-fg/80 hover:bg-white/10 transition-colors flex items-center justify-center gap-1 disabled:opacity-60"
             >
               <RotateCcw className="w-3.5 h-3.5" /> Girar
             </button>
             <button
               type="button" disabled={busy}
               onClick={() => { setPhase('adjust'); setResult(null); onScanChange(null); }}
-              className="py-2 rounded-lg bg-slate-800 border border-slate-700/60 text-[11px] text-slate-300 flex items-center justify-center gap-1 disabled:opacity-60"
+              className="py-2 rounded-lg bg-ink-800 border border-line text-[11px] text-fg/80 hover:bg-white/10 transition-colors flex items-center justify-center gap-1 disabled:opacity-60"
             >
               <Crop className="w-3.5 h-3.5" /> Bordes
             </button>
             <button
               type="button" disabled={busy}
               onClick={() => { const r = rotation + 1; setRotation(r); run(quad, mode, r); }}
-              className="py-2 rounded-lg bg-slate-800 border border-slate-700/60 text-[11px] text-slate-300 flex items-center justify-center gap-1 disabled:opacity-60"
+              className="py-2 rounded-lg bg-ink-800 border border-line text-[11px] text-fg/80 hover:bg-white/10 transition-colors flex items-center justify-center gap-1 disabled:opacity-60"
             >
               <RotateCw className="w-3.5 h-3.5" /> Girar
             </button>

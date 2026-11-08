@@ -1,12 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { FileText, AlertCircle, Trash2, Receipt, Download, HardDrive } from 'lucide-react';
+import CategoryIcon from '@/components/CategoryIcon';
 import {
-  ExternalLink, FileCheck, AlertCircle, Trash2
-} from 'lucide-react';
-import {
-  getCategoriaLabel, getCategoriaIcon, getCategoriaColor,
-  getTipoComprobanteLabel, formatMonto, formatDate
+  getCategoriaLabel, getTipoComprobanteLabel, formatMonto, formatDate
 } from '@/lib/constants';
 import type { Gasto } from '@/lib/types';
 
@@ -18,128 +16,130 @@ interface GastosListProps {
 export default function GastosList({ gastos, onDelete }: GastosListProps) {
   if (gastos.length === 0) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="text-center py-12"
-      >
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
-          <span className="text-3xl">📋</span>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-14">
+        <div className="w-12 h-12 mx-auto mb-4 rounded-full border border-line flex items-center justify-center text-faint">
+          <Receipt className="w-5 h-5" strokeWidth={1.5} />
         </div>
-        <p className="text-slate-400 text-sm">No hay gastos registrados aún</p>
-        <p className="text-slate-500 text-xs mt-1">Presiona + para registrar tu primera compra</p>
+        <p className="text-sm text-fg/80">Aún no hay compras registradas</p>
+        <p className="text-xs text-faint mt-1">Usa «Registrar compra» para añadir la primera.</p>
       </motion.div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-slate-300 px-1">
-        Compras Recientes ({gastos.length})
-      </h3>
-      {gastos.map((gasto, i) => (
-        <motion.div
-          key={gasto.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: i * 0.05 }}
-          className="group relative rounded-xl bg-slate-900/60 border border-white/5 p-4 hover:bg-slate-800/60 transition-all"
-        >
-          <div className="flex items-start gap-3">
-            {/* Category Icon */}
-            <div
-              className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-sm"
-              style={{ backgroundColor: `${getCategoriaColor(gasto.categoria)}18` }}
-            >
-              {getCategoriaIcon(gasto.categoria)}
-            </div>
+    <section>
+      <div className="flex items-baseline justify-between px-1 mb-3">
+        <h3 className="text-[11px] uppercase tracking-[0.16em] text-muted">Compras</h3>
+        <span className="text-[11px] text-faint tabular">{gastos.length}</span>
+      </div>
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h4 className="text-sm font-semibold text-white truncate">
-                    {gasto.proveedor}
-                  </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {getCategoriaLabel(gasto.categoria)}
-                  </p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-sm font-bold text-white">
-                    Bs. {formatMonto(gasto.monto_bob)}
-                  </p>
-                  {gasto.monto_usd != null && gasto.monto_usd > 0 && (
-                    <p className="text-xs text-slate-400">
-                      ≈ $ {formatMonto(gasto.monto_usd)}
+      <ul className="rounded-2xl bg-ink-900 border border-line divide-y divide-line overflow-hidden">
+        {gastos.map((gasto, i) => {
+          const pdf = gasto.pdf_url ?? gasto.drive_url;
+          return (
+            <motion.li
+              key={gasto.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25, delay: Math.min(i, 10) * 0.03 }}
+              className="p-4 hover:bg-white/[0.02] transition-colors"
+            >
+              <div className="flex items-start gap-3">
+                <CategoryIcon categoria={gasto.categoria} />
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-medium text-fg truncate">{gasto.proveedor}</h4>
+                      <p className="text-xs text-muted mt-0.5 truncate">
+                        {getCategoriaLabel(gasto.categoria)} · {formatDate(gasto.fecha)}
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-medium text-fg tabular">Bs. {formatMonto(gasto.monto_bob)}</p>
+                      {gasto.monto_usd != null && gasto.monto_usd > 0 && (
+                        <p className="text-[11px] text-faint tabular">US$ {formatMonto(gasto.monto_usd)}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {gasto.descripcion && (
+                    <p className="mt-2 text-xs text-fg/75 leading-relaxed">{gasto.descripcion}</p>
+                  )}
+
+                  {gasto.observaciones && (
+                    <p className="mt-1.5 text-xs text-muted leading-relaxed border-l-2 border-warn/50 pl-2">
+                      {gasto.observaciones}
                     </p>
                   )}
+
+                  <div className="flex items-center flex-wrap gap-x-3 gap-y-1.5 mt-3">
+                    <span className="text-[11px] text-faint">{getTipoComprobanteLabel(gasto.tipo_comprobante)}</span>
+
+                    <div className="ml-auto flex items-center gap-1">
+                      {pdf ? (
+                        <>
+                          <a
+                            href={pdf}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-[11px] font-medium text-brand-soft hover:text-fg px-2 py-1 rounded-md hover:bg-white/5 transition-colors"
+                          >
+                            <FileText className="w-3.5 h-3.5" strokeWidth={1.75} />
+                            Comprobante
+                          </a>
+                          {gasto.pdf_url && (
+                            <a
+                              href={`${gasto.pdf_url}?descargar=1`}
+                              className="p-1.5 rounded-md text-faint hover:text-fg hover:bg-white/5 transition-colors"
+                              title="Descargar PDF"
+                              aria-label={`Descargar comprobante de ${gasto.proveedor}`}
+                            >
+                              <Download className="w-3.5 h-3.5" strokeWidth={1.75} />
+                            </a>
+                          )}
+                          {gasto.drive_url && (
+                            <a
+                              href={gasto.drive_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 rounded-md text-faint hover:text-fg hover:bg-white/5 transition-colors"
+                              title="Abrir en Google Drive"
+                              aria-label={`Abrir comprobante de ${gasto.proveedor} en Google Drive`}
+                            >
+                              <HardDrive className="w-3.5 h-3.5" strokeWidth={1.75} />
+                            </a>
+                          )}
+                        </>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-[11px] text-warn px-2 py-1">
+                          <AlertCircle className="w-3.5 h-3.5" strokeWidth={1.75} />
+                          Sin comprobante
+                        </span>
+                      )}
+
+                      {onDelete && (
+                        <button
+                          onClick={() => {
+                            if (confirm(`¿Eliminar gasto de ${gasto.proveedor} (Bs. ${formatMonto(gasto.monto_bob)})? También se borrará su comprobante.`)) {
+                              onDelete(gasto.id);
+                            }
+                          }}
+                          className="p-1.5 rounded-md text-faint hover:bg-bad/15 hover:text-bad transition-colors"
+                          title="Eliminar gasto"
+                          aria-label={`Eliminar gasto de ${gasto.proveedor}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              {/* Items / Description */}
-              {gasto.descripcion && (
-                <div className="mt-2 text-xs text-slate-300 bg-slate-800/50 rounded-lg p-2 border border-slate-700/40">
-                  <span className="text-slate-400 font-medium">Contenido: </span>
-                  <span className="text-slate-200">{gasto.descripcion}</span>
-                </div>
-              )}
-
-              {/* Observaciones (Opcional) */}
-              {gasto.observaciones && (
-                <div className="mt-1.5 text-[11px] text-amber-200/90 bg-amber-500/10 rounded-lg px-2.5 py-1.5 border border-amber-500/20 flex items-start gap-1.5">
-                  <span className="font-semibold text-amber-400">Obs:</span>
-                  <span className="text-slate-300">{gasto.observaciones}</span>
-                </div>
-              )}
-
-              <div className="flex items-center flex-wrap gap-2 mt-2.5">
-                <span className="text-xs text-slate-500">
-                  {formatDate(gasto.fecha)}
-                </span>
-                <span className="text-xs text-slate-600">•</span>
-                <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700/50">
-                  {getTipoComprobanteLabel(gasto.tipo_comprobante)}
-                </span>
-
-                {/* Comprobante Status */}
-                {gasto.pdf_url || gasto.drive_url ? (
-                  <a
-                    href={gasto.pdf_url ?? gasto.drive_url!}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors ml-auto bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20"
-                  >
-                    <FileCheck className="w-3 h-3" />
-                    Ver PDF
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                ) : (
-                  <span className="flex items-center gap-1 text-xs text-amber-400 ml-auto bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                    <AlertCircle className="w-3 h-3" />
-                    Sin comprobante
-                  </span>
-                )}
-
-                {onDelete && (
-                  <button
-                    onClick={() => {
-                      if (confirm(`¿Eliminar gasto de ${gasto.proveedor} (Bs. ${formatMonto(gasto.monto_bob)})? También se borrará su comprobante.`)) {
-                        onDelete(gasto.id);
-                      }
-                    }}
-                    className="p-1.5 -my-1 rounded-lg text-slate-500 hover:bg-red-500/20 hover:text-red-400 transition-colors"
-                    title="Eliminar gasto"
-                    aria-label={`Eliminar gasto de ${gasto.proveedor}`}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      ))}
-    </div>
+            </motion.li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

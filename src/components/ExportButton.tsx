@@ -33,19 +33,10 @@ export default function ExportButton() {
     <button
       onClick={handleExport}
       disabled={isExporting}
-      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white text-sm font-medium hover:from-emerald-500 hover:to-teal-400 disabled:opacity-60 transition-all shadow-lg shadow-emerald-900/20"
+      className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-line-strong text-fg text-xs font-medium hover:bg-white/5 disabled:opacity-60 transition-colors"
     >
-      {isExporting ? (
-        <>
-          <Loader2 className="w-4 h-4 animate-spin" />
-          Exportando...
-        </>
-      ) : (
-        <>
-          <Download className="w-4 h-4" />
-          Exportar Rendición
-        </>
-      )}
+      {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+      {isExporting ? 'Exportando…' : 'Exportar'}
     </button>
   );
 }

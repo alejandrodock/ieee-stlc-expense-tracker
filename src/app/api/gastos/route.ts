@@ -4,8 +4,8 @@ import { parseGastoInput, isUuid } from '@/lib/server/validation';
 import {
   COMPROBANTES_BUCKET, comprobanteExists, comprobantePath, comprobanteUrl,
 } from '@/lib/server/storage';
-import { isDriveSyncEnabled, uploadToDrive } from '@/lib/server/drive';
-import { generatePdfFilename } from '@/lib/constants';
+import { isDriveSyncEnabled, trashInDrive, uploadToDrive } from '@/lib/server/drive';
+import { generatePdfFilename, getCategoriaLabel } from '@/lib/constants';
 import { GASTO_COLUMNS } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -73,7 +73,11 @@ export async function POST(req: NextRequest) {
             .download(comprobantePath(input.id));
           if (dlError || !file) throw dlError ?? new Error('PDF no encontrado');
           const filename = generatePdfFilename(input.fecha, input.categoria, input.proveedor, input.monto_bob);
-          const { fileId, webViewLink } = await uploadToDrive(filename, new Uint8Array(await file.arrayBuffer()));
+          const { fileId, webViewLink } = await uploadToDrive(
+            filename,
+            new Uint8Array(await file.arrayBuffer()),
+            getCategoriaLabel(input.categoria),
+          );
           await supabase.from('gastos').update({ drive_file_id: fileId, drive_url: webViewLink }).eq('id', input.id);
         } catch (err) {
           console.error('Drive sync failed (non-fatal):', err);
@@ -100,8 +104,20 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const supabase = getServerSupabase();
+    const { data: existing } = await supabase.from('gastos').select('drive_file_id').eq('id', id).maybeSingle();
     const { error } = await supabase.from('gastos').delete().eq('id', id);
     if (error) throw error;
+
+    const driveFileId = existing?.drive_file_id as string | null | undefined;
+    if (driveFileId && isDriveSyncEnabled()) {
+      after(async () => {
+        try {
+          await trashInDrive(driveFileId);
+        } catch (err) {
+          console.error('Drive trash failed (non-fatal):', err);
+        }
+      });
+    }
 
     const { error: storageError } = await supabase.storage.from(COMPROBANTES_BUCKET).remove([comprobantePath(id)]);
     if (storageError) console.warn('Receipt cleanup failed (non-fatal):', storageError.message);

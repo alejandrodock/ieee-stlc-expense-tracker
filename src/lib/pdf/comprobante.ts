@@ -1,12 +1,12 @@
 /**
  * Builds the audit PDF for an expense with pdf-lib (runs in the browser and in Node).
  *
- *  - Scanned receipt  -> page 1: institutional header + data card + the scan (or the
- *                        scan on its own page when the text leaves too little room).
+ *  - Scanned receipt  -> ONE page: institutional header + data card + the scan
  *  - Attached PDF     -> page 1: header + data card (cover), followed by every page
  *                        of the original digital receipt, untouched.
  */
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from 'pdf-lib';
+import { RESPONSABLE } from '../constants';
 
 export type ComprobanteMeta = {
   referencia: string; // file name used as audit reference
@@ -85,24 +85,26 @@ function drawLines(page: PDFPage, lines: string[], x: number, yTop: number, font
   return lines.length * lineH;
 }
 
+const EVENT_TITLE = 'IEEE ComSoc Student Tech Leadership Conference';
+const EVENT_SUBTITLE = 'Universidad Mayor de San Andrés · 2026';
+
 /** Header band; returns the y coordinate just below it. */
-function drawHeader(page: PDFPage, f: Fonts, meta: ComprobanteMeta, clean: (s: string) => string, continuation = false): number {
+function drawHeader(page: PDFPage, f: Fonts, meta: ComprobanteMeta, clean: (s: string) => string): number {
   const [w, h] = A4;
-  const bandH = continuation ? 40 : 74;
+  const bandH = 86;
   page.drawRectangle({ x: 0, y: h - bandH, width: w, height: bandH, color: C.navy });
   page.drawRectangle({ x: 0, y: h - bandH, width: w, height: 3, color: C.blue });
-  if (continuation) {
-    page.drawText('IEEE SECCIÓN BOLIVIA · STLC 2026', { x: M, y: h - 25, size: 10, font: f.bold, color: C.white });
-    const ref = clean(`Ref: ${meta.referencia}`);
-    page.drawText(ref, { x: w - M - f.regular.widthOfTextAtSize(ref, 7.5), y: h - 24, size: 7.5, font: f.regular, color: C.slate400 });
-    return h - bandH - 16;
-  }
-  page.drawText('IEEE SECCIÓN BOLIVIA · STLC 2026', { x: M, y: h - 30, size: 15, font: f.bold, color: C.white });
-  page.drawText('COMPROBANTE DE RENDICIÓN DE FONDOS', { x: M, y: h - 47, size: 8.5, font: f.bold, color: C.slate400 });
+  const titleSize = Math.min(15, ((w - 2 * M) / f.bold.widthOfTextAtSize(EVENT_TITLE, 15)) * 15);
+  page.drawText(clean(EVENT_TITLE), { x: M, y: h - 30, size: titleSize, font: f.bold, color: C.white });
+  page.drawText(clean(EVENT_SUBTITLE), { x: M, y: h - 45, size: 10, font: f.regular, color: C.white });
+  page.drawText(clean('COMPROBANTE DE RENDICIÓN DE FONDOS'), { x: M, y: h - 62, size: 8, font: f.bold, color: C.slate400 });
   const ref = wrap(clean(`Ref: ${meta.referencia}`), f.regular, 7.5, w - 2 * M);
-  drawLines(page, ref.slice(0, 1), M, h - 54, f.regular, 7.5, C.slate400);
-  return h - bandH - 18;
+  drawLines(page, ref.slice(0, 1), M, h - 66, f.regular, 7.5, C.slate400);
+  return h - bandH - 16;
 }
+
+/** Page stand-in that measures layout without drawing anything. */
+const MEASURE_PAGE = { drawText() {}, drawRectangle() {}, drawLine() {} } as unknown as PDFPage;
 
 function drawFooters(doc: PDFDocument, f: Fonts, meta: ComprobanteMeta, clean: (s: string) => string, fromPage: number, toPage: number) {
   const pages = doc.getPages();
@@ -117,7 +119,7 @@ function drawFooters(doc: PDFDocument, f: Fonts, meta: ComprobanteMeta, clean: (
 }
 
 /** Data card + optional description / observation blocks. Returns y below the content. */
-function drawDetails(page: PDFPage, f: Fonts, meta: ComprobanteMeta, clean: (s: string) => string, yTop: number): number {
+function drawDetails(page: PDFPage, f: Fonts, meta: ComprobanteMeta, clean: (s: string) => string, yTop: number, maxBlockLines = Infinity): number {
   const [w] = A4;
   const cardW = w - 2 * M;
   const pad = 12;
@@ -166,8 +168,15 @@ function drawDetails(page: PDFPage, f: Fonts, meta: ComprobanteMeta, clean: (s: 
   y = yTop - cardH - 10;
 
   const block = (title: string, text: string, bg: RGB, titleColor: RGB, textColor: RGB) => {
-    const lines = wrap(clean(text), f.regular, 9, cardW - pad * 2);
-    const h = pad + labelSize + 5 + lines.length * 9 * 1.3 + pad - 3;
+    let lines = wrap(clean(text), f.regular, 9, cardW - pad * 2);
+    if (lines.length > maxBlockLines) {
+      lines = lines.slice(0, maxBlockLines);
+      const last = lines.length - 1;
+      let tail = lines[last];
+      while (tail && f.regular.widthOfTextAtSize(`${tail}...`, 9) > cardW - pad * 2) tail = tail.slice(0, -1);
+      lines[last] = `${tail.trimEnd()}...`;
+    }
+    const h =pad + labelSize + 5 + lines.length * 9 * 1.3 + pad - 3;
     page.drawRectangle({ x: M, y: y - h, width: cardW, height: h, color: bg });
     page.drawText(title, { x: M + pad, y: y - pad - labelSize + 2, size: labelSize, font: f.bold, color: titleColor });
     drawLines(page, lines, M + pad, y - pad - labelSize - 3, f.regular, 9, textColor);
@@ -190,7 +199,7 @@ async function newDocument() {
 function setInfo(doc: PDFDocument, meta: ComprobanteMeta) {
   doc.setTitle(`Comprobante ${meta.referencia}`);
   doc.setSubject('Rendición de fondos IEEE STLC 2026');
-  doc.setAuthor('IEEE Sección Bolivia');
+  doc.setAuthor(`${EVENT_TITLE} · ${EVENT_SUBTITLE}`);
   doc.setCreator('IEEE STLC ExpenseTracker');
   doc.setProducer('IEEE STLC ExpenseTracker');
 }
@@ -203,17 +212,17 @@ export async function buildScanPdf(meta: ComprobanteMeta, scan: ScanInput): Prom
   const [W, H] = A4;
   const bottom = 34;
 
-  let page = doc.addPage(A4);
-  let y = drawHeader(page, fonts, meta, clean);
-  y = drawDetails(page, fonts, meta, clean, y) - 4;
-
-  // Scan on the same page if it can use at least ~55 % of the page height, else new page.
-  let availH = y - bottom;
-  if (availH < H * 0.55) {
-    page = doc.addPage(A4);
-    y = drawHeader(page, fonts, meta, clean, true);
-    availH = y - bottom;
+  // Everything on ONE page: header + data card + scan. Long description/observation
+  // texts are shortened only as much as needed to keep the scan at ≥ ~50 % of the page.
+  const page = doc.addPage(A4);
+  const top = drawHeader(page, fonts, meta, clean);
+  let maxLines = Infinity;
+  for (const limit of [Infinity, 8, 5, 3, 2, 1]) {
+    maxLines = limit;
+    if (drawDetails(MEASURE_PAGE, fonts, meta, clean, top, limit) - 4 - bottom >= H * 0.5) break;
   }
+  const y = drawDetails(page, fonts, meta, clean, top, maxLines) - 4;
+  const availH = y - bottom;
   const availW = W - 2 * M;
   const s = Math.min(availW / scan.width, availH / scan.height);
   const iw = scan.width * s, ih = scan.height * s;
@@ -223,6 +232,40 @@ export async function buildScanPdf(meta: ComprobanteMeta, scan: ScanInput): Prom
   page.drawImage(image, { x, y: iy, width: iw, height: ih });
 
   drawFooters(doc, fonts, meta, clean, 0, doc.getPageCount());
+  return doc.save();
+}
+
+/**
+ * Minor expense without invoice or receipt (taxi, pasajes…) -> one-page signed
+ * declaration that backs the expense in the report.
+ */
+export async function buildDeclaracionPdf(meta: ComprobanteMeta): Promise<Uint8Array> {
+  const { doc, fonts: f, clean } = await newDocument();
+  setInfo(doc, meta);
+  const [W] = A4;
+  const page = doc.addPage(A4);
+  let y = drawHeader(page, f, meta, clean);
+  y = drawDetails(page, f, meta, clean, y) - 14;
+
+  const width = W - 2 * M;
+  page.drawText(clean('DECLARACIÓN DE GASTO SIN COMPROBANTE'), { x: M, y: y - 11, size: 11, font: f.bold, color: C.slate800 });
+  y -= 11 + 12;
+
+  const texto =
+    `Yo, ${RESPONSABLE}, responsable de los fondos del evento ${EVENT_TITLE} (${EVENT_SUBTITLE}), ` +
+    `declaro que el gasto detallado en este documento por Bs. ${meta.montoBob} fue realizado el ${meta.fecha} ` +
+    `exclusivamente para actividades del evento, y que no cuenta con factura ni recibo por tratarse de un gasto menor ` +
+    `(transporte en taxi, trufi, minibús u otro similar) para el cual el proveedor no emite comprobante.`;
+  y -= drawLines(page, wrap(clean(texto), f.regular, 10, width), M, y, f.regular, 10, C.slate800, 15) + 50;
+
+  // Firma
+  const lineW = 220;
+  page.drawLine({ start: { x: M, y }, end: { x: M + lineW, y }, thickness: 0.8, color: C.slate500 });
+  page.drawText(clean(RESPONSABLE), { x: M, y: y - 13, size: 9.5, font: f.bold, color: C.slate800 });
+  page.drawText(clean('Responsable de fondos · C.I.: ____________________'), { x: M, y: y - 26, size: 8.5, font: f.regular, color: C.slate500 });
+  page.drawText(clean(`Lugar y fecha: La Paz, ${meta.fecha}`), { x: M, y: y - 39, size: 8.5, font: f.regular, color: C.slate500 });
+
+  drawFooters(doc, f, meta, clean, 0, 1);
   return doc.save();
 }
 

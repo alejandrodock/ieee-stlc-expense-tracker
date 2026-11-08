@@ -27,7 +27,7 @@ type Attachment =
 const MAX_PDF_MB = 20;
 
 const inputCls =
-  'w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all';
+  'w-full px-4 py-3 bg-ink-800 border border-line rounded-xl text-fg text-sm placeholder:text-faint focus:outline-none focus:border-brand-soft/60 focus:ring-2 focus:ring-brand/30 transition-all';
 
 export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActual }: NuevaCompraModalProps) {
   const [fecha, setFecha] = useState(todayLocal);
@@ -35,7 +35,7 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
   const [proveedor, setProveedor] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [observaciones, setObservaciones] = useState('');
-  const [tipoComprobante, setTipoComprobante] = useState<string>('factura_ieee');
+  const [tipoComprobante, setTipoComprobante] = useState<string>('factura_personal');
   const [montoBob, setMontoBob] = useState('');
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [scan, setScan] = useState<ScanResult | null>(null);
@@ -93,6 +93,14 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
   };
 
   const comprobantePendiente = attachment?.kind === 'image' && !scan;
+  const esGastoMenor = tipoComprobante === 'sin_comprobante';
+
+  const onCategoriaChange = (value: string) => {
+    setCategoria(value);
+    // Taxis y pasajes casi nunca tienen factura.
+    if (value === 'operativos') setTipoComprobante('sin_comprobante');
+    else if (categoria === 'operativos' && tipoComprobante === 'sin_comprobante') setTipoComprobante('factura_personal');
+  };
 
   const handleSubmit = async () => {
     if (!categoria || !proveedor.trim() || montoNum <= 0 || comprobantePendiente) return;
@@ -101,9 +109,9 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
     let tieneComprobante = false;
 
     try {
-      if (attachment) {
+      if (attachment || esGastoMenor) {
         setStatus('Generando PDF…');
-        const { buildScanPdf, buildAttachedPdf } = await import('@/lib/pdf/comprobante');
+        const { buildScanPdf, buildAttachedPdf, buildDeclaracionPdf } = await import('@/lib/pdf/comprobante');
         const meta = {
           referencia: generatePdfFilename(fecha, categoria, proveedor.trim(), montoNum),
           fecha,
@@ -119,7 +127,9 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
         };
 
         let pdf: Uint8Array;
-        if (attachment.kind === 'image') {
+        if (!attachment) {
+          pdf = await buildDeclaracionPdf(meta);
+        } else if (attachment.kind === 'image') {
           pdf = await buildScanPdf(meta, scan!);
         } else {
           const result = await buildAttachedPdf(meta, new Uint8Array(await attachment.file.arrayBuffer()));
@@ -186,23 +196,23 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
       aria-modal="true"
       aria-labelledby="nueva-compra-title"
     >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={handleClose} />
+      <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={handleClose} />
 
       <motion.div
         initial={{ y: '100%', opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: '100%', opacity: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="relative w-full max-w-lg max-h-[94dvh] overflow-y-auto bg-gradient-to-b from-slate-900 to-slate-950 rounded-t-3xl sm:rounded-2xl border border-white/10 shadow-2xl"
+        className="relative w-full max-w-lg max-h-[94dvh] overflow-y-auto bg-ink-900 rounded-t-3xl sm:rounded-2xl border border-line-strong shadow-2xl shadow-black/50"
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-xl border-b border-white/5 px-6 py-4 flex items-center justify-between rounded-t-3xl sm:rounded-t-2xl">
+        <div className="sticky top-0 z-10 bg-ink-900/95 backdrop-blur-md border-b border-line px-6 py-4 flex items-center justify-between rounded-t-3xl sm:rounded-t-2xl">
           <div>
-            <h2 id="nueva-compra-title" className="text-lg font-bold text-white">Registrar Compra</h2>
-            <p className="text-xs text-slate-400">Paso {step} de 3</p>
+            <h2 id="nueva-compra-title" className="font-serif text-2xl text-fg leading-none">Registrar compra</h2>
+            <p className="mt-1.5 text-[11px] uppercase tracking-[0.14em] text-faint">Paso {step} de 3 · {['Datos', 'Monto', 'Comprobante'][step - 1]}</p>
           </div>
           <button onClick={handleClose} disabled={isSubmitting} aria-label="Cerrar" className="p-2 rounded-full hover:bg-white/10 transition-colors disabled:opacity-40">
-            <X className="w-5 h-5 text-slate-400" />
+            <X className="w-5 h-5 text-muted" />
           </button>
         </div>
 
@@ -210,7 +220,7 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
         <div className="px-6 pt-4">
           <div className="flex gap-2">
             {[1, 2, 3].map((s) => (
-              <div key={s} className={`h-1 flex-1 rounded-full transition-all duration-500 ${s <= step ? 'bg-gradient-to-r from-blue-500 to-cyan-400' : 'bg-slate-800'}`} />
+              <div key={s} className={`h-[3px] flex-1 rounded-full transition-colors duration-500 ${s <= step ? 'bg-brand-soft' : 'bg-white/[0.07]'}`} />
             ))}
           </div>
         </div>
@@ -220,53 +230,53 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
           {step === 1 && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
               <div className="space-y-1.5">
-                <label htmlFor="fecha" className="flex items-center gap-2 text-xs font-medium text-slate-300">
-                  <Calendar className="w-3.5 h-3.5 text-blue-400" /> Fecha de Compra
+                <label htmlFor="fecha" className="flex items-center gap-2 text-xs font-medium text-muted">
+                  <Calendar className="w-3.5 h-3.5 text-faint" /> Fecha de Compra
                 </label>
                 <input id="fecha" type="date" value={fecha} max={todayLocal()} onChange={(e) => setFecha(e.target.value)} className={inputCls} />
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="categoria" className="flex items-center gap-2 text-xs font-medium text-slate-300">
-                  <Tag className="w-3.5 h-3.5 text-purple-400" /> Categoría del Presupuesto
+                <label htmlFor="categoria" className="flex items-center gap-2 text-xs font-medium text-muted">
+                  <Tag className="w-3.5 h-3.5 text-faint" /> Categoría del Presupuesto
                 </label>
                 <div className="relative">
-                  <select id="categoria" value={categoria} onChange={(e) => setCategoria(e.target.value)} className={`${inputCls} appearance-none cursor-pointer`}>
-                    <option value="" className="bg-slate-800">Seleccionar categoría...</option>
+                  <select id="categoria" value={categoria} onChange={(e) => onCategoriaChange(e.target.value)} className={`${inputCls} appearance-none cursor-pointer`}>
+                    <option value="" className="bg-ink-800">Seleccionar categoría...</option>
                     {CATEGORIAS.map((cat) => (
-                      <option key={cat.value} value={cat.value} className="bg-slate-800">{cat.icon} {cat.label}</option>
+                      <option key={cat.value} value={cat.value} className="bg-ink-800">{cat.label}</option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="proveedor" className="flex items-center gap-2 text-xs font-medium text-slate-300">
-                  <FileText className="w-3.5 h-3.5 text-green-400" /> Proveedor / Empresa
+                <label htmlFor="proveedor" className="flex items-center gap-2 text-xs font-medium text-muted">
+                  <FileText className="w-3.5 h-3.5 text-faint" /> Proveedor / Empresa
                 </label>
-                <input id="proveedor" type="text" maxLength={200} value={proveedor} onChange={(e) => setProveedor(e.target.value)} placeholder="Ej: Imprenta Gutenberg, Hipermaxi..." className={inputCls} />
+                <input id="proveedor" type="text" maxLength={200} value={proveedor} onChange={(e) => setProveedor(e.target.value)} placeholder={categoria === 'operativos' ? 'Ej: Taxi, Trufi, Minibús, Teleférico...' : 'Ej: Imprenta Gutenberg, Hipermaxi...'} className={inputCls} />
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="descripcion" className="flex items-center justify-between text-xs font-medium text-slate-300">
-                  <span className="flex items-center gap-2"><ListChecks className="w-3.5 h-3.5 text-cyan-400" /> Descripción / Elementos que contiene</span>
-                  <span className="text-[10px] text-slate-500">Múltiples items</span>
+                <label htmlFor="descripcion" className="flex items-center justify-between text-xs font-medium text-muted">
+                  <span className="flex items-center gap-2"><ListChecks className="w-3.5 h-3.5 text-faint" /> Descripción / Elementos que contiene</span>
+                  <span className="text-[10px] text-faint">Múltiples items</span>
                 </label>
                 <textarea id="descripcion" rows={2} maxLength={2000} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej: 3 cajas de café, 200 vasos térmicos, azúcar y servilletas..." className={`${inputCls} resize-none py-2`} />
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="observaciones" className="flex items-center justify-between text-xs font-medium text-slate-300">
-                  <span className="flex items-center gap-2"><MessageSquareQuote className="w-3.5 h-3.5 text-amber-400" /> Observaciones</span>
-                  <span className="text-[10px] text-slate-500 font-normal">Opcional</span>
+                <label htmlFor="observaciones" className="flex items-center justify-between text-xs font-medium text-muted">
+                  <span className="flex items-center gap-2"><MessageSquareQuote className="w-3.5 h-3.5 text-faint" /> Observaciones</span>
+                  <span className="text-[10px] text-faint font-normal">Opcional</span>
                 </label>
                 <input id="observaciones" type="text" maxLength={1000} value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Ej: Proveedor sin talonario de factura, descuento por pronto pago..." className={`${inputCls} py-2.5`} />
               </div>
 
               <div className="space-y-1.5">
-                <span className="flex items-center gap-2 text-xs font-medium text-slate-300">
-                  <FileText className="w-3.5 h-3.5 text-amber-400" /> Tipo de Comprobante
+                <span className="flex items-center gap-2 text-xs font-medium text-muted">
+                  <FileText className="w-3.5 h-3.5 text-faint" /> Tipo de Comprobante
                 </span>
                 <div className="grid grid-cols-1 gap-2" role="radiogroup">
                   {TIPOS_COMPROBANTE.map((tipo) => {
@@ -276,11 +286,11 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
                         key={tipo.value} type="button" role="radio" aria-checked={sel}
                         onClick={() => setTipoComprobante(tipo.value)}
                         className={`px-3.5 py-2.5 rounded-xl text-xs text-left transition-all flex items-center justify-between border ${
-                          sel ? 'bg-blue-500/20 border-blue-500/60 text-blue-200 shadow-sm' : 'bg-slate-800/50 border-slate-700/50 text-slate-300 hover:bg-slate-800'
+                          sel ? 'bg-brand/15 border-brand-soft/50 text-fg' : 'bg-ink-800 border-line text-muted hover:text-fg hover:bg-white/[0.03]'
                         }`}
                       >
                         <span className="font-medium">{tipo.label}</span>
-                        {sel && <CheckCircle2 className="w-4 h-4 text-blue-400" />}
+                        {sel && <CheckCircle2 className="w-4 h-4 text-brand-soft" />}
                       </button>
                     );
                   })}
@@ -290,9 +300,9 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
               <button
                 onClick={() => setStep(2)}
                 disabled={!categoria || !proveedor.trim() || !fecha}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-semibold hover:from-blue-500 hover:to-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/20"
+                className="w-full py-3.5 rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                Siguiente (Monto) →
+                Continuar
               </button>
             </motion.div>
           )}
@@ -301,52 +311,52 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
           {step === 2 && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="monto" className="flex items-center gap-2 text-xs font-medium text-slate-300">
-                  <DollarSign className="w-4 h-4 text-emerald-400" /> Monto en Bolivianos (BOB)
+                <label htmlFor="monto" className="flex items-center gap-2 text-xs font-medium text-muted">
+                  <DollarSign className="w-4 h-4 text-faint" /> Monto en Bolivianos (BOB)
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-lg">Bs.</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted text-lg">Bs.</span>
                   <input
                     id="monto" type="number" inputMode="decimal" step="0.01" min="0" value={montoBob}
                     onChange={(e) => setMontoBob(e.target.value)} placeholder="0.00" autoFocus
-                    className="w-full pl-14 pr-4 py-4 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+                    className="w-full pl-14 pr-4 py-4 bg-ink-800 border border-line rounded-xl text-fg font-serif text-3xl tabular focus:outline-none focus:border-brand-soft/60 focus:ring-2 focus:ring-brand/30 transition-all"
                   />
                 </div>
               </div>
 
               {montoNum > 0 && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded-xl bg-gradient-to-br from-slate-800/80 to-slate-800/40 border border-slate-700/30 space-y-3">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded-xl bg-ink-850 border border-line space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400">Equivalente USD (T.C. {formatTipoCambio()})</span>
-                    <span className="text-xs font-semibold text-slate-200">$ {formatMonto(montoUsd)}</span>
+                    <span className="text-xs text-muted">Equivalente USD (T.C. {formatTipoCambio()})</span>
+                    <span className="text-xs font-semibold text-fg">$ {formatMonto(montoUsd)}</span>
                   </div>
-                  <div className="h-px bg-slate-700/50" />
+                  <div className="h-px bg-line" />
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400">Saldo actual disponible</span>
-                    <span className="text-xs text-slate-300">Bs. {formatMonto(saldoActual)}</span>
+                    <span className="text-xs text-muted">Saldo actual disponible</span>
+                    <span className="text-xs text-fg/80">Bs. {formatMonto(saldoActual)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400">Descuento de esta compra</span>
-                    <span className="text-xs text-red-400 font-medium">- Bs. {formatMonto(montoNum)}</span>
+                    <span className="text-xs text-muted">Descuento de esta compra</span>
+                    <span className="text-xs text-fg/80 tabular">− Bs. {formatMonto(montoNum)}</span>
                   </div>
-                  <div className="h-px bg-slate-700/50" />
+                  <div className="h-px bg-line" />
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-white">Nuevo Saldo Restante</span>
-                    <span className={`text-base font-bold ${nuevoSaldo >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>Bs. {formatMonto(nuevoSaldo)}</span>
+                    <span className="text-xs font-semibold text-fg">Nuevo Saldo Restante</span>
+                    <span className={`text-base font-semibold tabular ${nuevoSaldo >= 0 ? 'text-fg' : 'text-bad'}`}>Bs. {formatMonto(nuevoSaldo)}</span>
                   </div>
                   {nuevoSaldo < 0 && (
-                    <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">⚠️ Este gasto sobrepasa el presupuesto disponible</p>
+                    <p className="text-xs text-bad bg-bad/10 px-3 py-2 rounded-lg border border-bad/25">Este gasto sobrepasa el presupuesto disponible</p>
                   )}
                 </motion.div>
               )}
 
               <div className="flex gap-3">
-                <button onClick={() => setStep(1)} className="flex-1 py-3 rounded-xl border border-slate-700/50 text-slate-300 text-sm font-medium hover:bg-slate-800 transition-all">← Atrás</button>
+                <button onClick={() => setStep(1)} className="flex-1 py-3 rounded-xl border border-line-strong text-fg/80 text-sm font-medium hover:bg-white/5 transition-colors">Atrás</button>
                 <button
                   onClick={() => setStep(3)} disabled={montoNum <= 0}
-                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-semibold hover:from-blue-500 hover:to-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/20"
+                  className="flex-1 py-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  Siguiente (Comprobante) →
+                  Continuar
                 </button>
               </div>
             </motion.div>
@@ -355,10 +365,10 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
           {/* STEP 3: receipt */}
           {step === 3 && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-              <div className="flex items-center justify-between text-xs font-medium text-slate-300">
-                <span className="flex items-center gap-2"><Camera className="w-3.5 h-3.5 text-pink-400" /> Comprobante (factura o recibo)</span>
+              <div className="flex items-center justify-between text-xs font-medium text-muted">
+                <span className="flex items-center gap-2"><Camera className="w-3.5 h-3.5 text-faint" /> Comprobante (factura o recibo)</span>
                 {attachment && !isSubmitting && (
-                  <button type="button" onClick={clearAttachment} className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1">
+                  <button type="button" onClick={clearAttachment} className="text-[11px] text-muted hover:text-fg flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Cambiar
                   </button>
                 )}
@@ -367,19 +377,19 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
               {!attachment && (
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { ref: cameraInputRef, icon: Camera, title: 'Escanear', sub: 'Cámara', border: 'hover:border-blue-500/50', bg: 'bg-blue-500/10', text: 'text-blue-400' },
-                    { ref: fileInputRef, icon: Upload, title: 'Imagen', sub: 'Galería', border: 'hover:border-purple-500/50', bg: 'bg-purple-500/10', text: 'text-purple-400' },
-                    { ref: pdfInputRef, icon: FileUp, title: 'PDF', sub: 'Recibo digital', border: 'hover:border-emerald-500/50', bg: 'bg-emerald-500/10', text: 'text-emerald-400' },
+                    { ref: cameraInputRef, icon: Camera, title: 'Escanear', sub: 'Cámara', border: 'hover:border-brand-soft/50', bg: 'bg-brand/15', text: 'text-brand-soft' },
+                    { ref: fileInputRef, icon: Upload, title: 'Imagen', sub: 'Galería', border: 'hover:border-brand-soft/50', bg: 'bg-brand/15', text: 'text-brand-soft' },
+                    { ref: pdfInputRef, icon: FileUp, title: 'PDF', sub: 'Recibo digital', border: 'hover:border-brand-soft/50', bg: 'bg-brand/15', text: 'text-brand-soft' },
                   ].map(({ ref, icon: Icon, title, sub, border, bg, text }) => (
                     <button
                       key={title} type="button" onClick={() => ref.current?.click()}
-                      className={`flex flex-col items-center justify-center gap-1.5 p-4 rounded-xl border-2 border-dashed border-slate-700/60 hover:bg-white/5 transition-all group ${border}`}
+                      className={`flex flex-col items-center justify-center gap-1.5 p-4 rounded-xl border border-dashed border-line-strong hover:bg-white/[0.03] transition-colors group ${border}`}
                     >
-                      <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                      <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center `}>
                         <Icon className={`w-5 h-5 ${text}`} />
                       </div>
-                      <span className="text-xs font-medium text-slate-200">{title}</span>
-                      <span className="text-[10px] text-slate-500">{sub}</span>
+                      <span className="text-xs font-medium text-fg">{title}</span>
+                      <span className="text-[10px] text-faint">{sub}</span>
                     </button>
                   ))}
                 </div>
@@ -392,13 +402,13 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
               {attachment?.kind === 'image' && <DocumentScanner file={attachment.file} onScanChange={handleScanChange} />}
 
               {attachment?.kind === 'pdf' && (
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                    <FileUp className="w-5 h-5 text-emerald-300" />
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-ink-850 border border-line">
+                  <div className="w-10 h-10 rounded-lg bg-brand/15 flex items-center justify-center flex-shrink-0">
+                    <FileUp className="w-5 h-5 text-brand-soft" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm text-white font-medium truncate">{attachment.file.name}</p>
-                    <p className="text-[11px] text-emerald-200/80">
+                    <p className="text-sm text-fg font-medium truncate">{attachment.file.name}</p>
+                    <p className="text-[11px] text-muted">
                       {(attachment.file.size / 1024 / 1024).toFixed(2)} MB
                       {attachment.pages ? ` · ${attachment.pages} página(s) · se agregará una portada de rendición` : ' · PDF protegido: se archivará tal cual'}
                     </p>
@@ -407,35 +417,42 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
               )}
 
               {!attachment && (
-                <p className="text-[11px] text-slate-500 text-center">Puedes guardar sin comprobante y adjuntarlo en un registro nuevo más tarde.</p>
+                esGastoMenor ? (
+                  <p className="text-[11px] text-muted text-center leading-relaxed">
+                    Gasto menor sin factura: se generará automáticamente una <span className="text-fg">declaración de gasto</span> en PDF para la rendición.
+                    Si tienes algo (p. ej. captura de la app de taxi), puedes adjuntarlo.
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-faint text-center">Puedes guardar sin comprobante y adjuntarlo en un registro nuevo más tarde.</p>
+                )
               )}
 
               {/* Summary */}
-              <div className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/40 space-y-1.5 text-xs">
-                <div className="flex justify-between gap-4"><span className="text-slate-400">Proveedor:</span><span className="text-slate-200 font-medium text-right truncate">{proveedor}</span></div>
-                {descripcion && <div className="flex justify-between gap-4"><span className="text-slate-400 flex-shrink-0">Detalle:</span><span className="text-slate-300 text-right truncate">{descripcion}</span></div>}
-                {observaciones && <div className="flex justify-between gap-4"><span className="text-amber-400/90 flex-shrink-0">Observaciones:</span><span className="text-slate-300 text-right truncate">{observaciones}</span></div>}
-                <div className="flex justify-between gap-4"><span className="text-slate-400">Tipo:</span><span className="text-slate-200 text-right">{getTipoComprobanteLabel(tipoComprobante)}</span></div>
-                <div className="flex justify-between"><span className="text-slate-400">Monto:</span><span className="text-emerald-400 font-bold">Bs. {formatMonto(montoNum)}</span></div>
+              <div className="p-3.5 rounded-xl bg-ink-850 border border-line space-y-1.5 text-xs">
+                <div className="flex justify-between gap-4"><span className="text-muted">Proveedor:</span><span className="text-fg font-medium text-right truncate">{proveedor}</span></div>
+                {descripcion && <div className="flex justify-between gap-4"><span className="text-muted flex-shrink-0">Detalle:</span><span className="text-fg/80 text-right truncate">{descripcion}</span></div>}
+                {observaciones && <div className="flex justify-between gap-4"><span className="text-warn flex-shrink-0">Observaciones:</span><span className="text-fg/80 text-right truncate">{observaciones}</span></div>}
+                <div className="flex justify-between gap-4"><span className="text-muted">Tipo:</span><span className="text-fg text-right">{getTipoComprobanteLabel(tipoComprobante)}</span></div>
+                <div className="flex justify-between"><span className="text-muted">Monto:</span><span className="text-fg font-semibold tabular">Bs. {formatMonto(montoNum)}</span></div>
               </div>
 
               {error && (
-                <p role="alert" className="text-xs text-red-300 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/30 flex items-start gap-2">
+                <p role="alert" className="text-xs text-bad bg-bad/10 px-3 py-2 rounded-lg border border-bad/30 flex items-start gap-2">
                   <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" /> {error}
                 </p>
               )}
               {comprobantePendiente && (
-                <p className="text-[11px] text-amber-300 text-center">Pulsa «Recortar y escanear» para preparar el comprobante.</p>
+                <p className="text-[11px] text-warn text-center">Pulsa «Recortar y escanear» para preparar el comprobante.</p>
               )}
 
               <div className="flex gap-3 pt-1">
-                <button onClick={() => setStep(2)} disabled={isSubmitting} className="flex-1 py-3 rounded-xl border border-slate-700/50 text-slate-300 text-sm font-medium hover:bg-slate-800 transition-all disabled:opacity-40">← Atrás</button>
+                <button onClick={() => setStep(2)} disabled={isSubmitting} className="flex-1 py-3 rounded-xl border border-line-strong text-fg/80 text-sm font-medium hover:bg-white/5 transition-colors disabled:opacity-40">Atrás</button>
                 <button
                   onClick={handleSubmit}
                   disabled={isSubmitting || comprobantePendiente}
-                  className="flex-[1.4] py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white text-sm font-semibold hover:from-emerald-500 hover:to-teal-400 disabled:opacity-50 transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                  className="flex-[1.4] py-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                 >
-                  {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {status}</> : <><CheckCircle2 className="w-4 h-4" /> Guardar Compra</>}
+                  {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {status}</> : <><CheckCircle2 className="w-4 h-4" /> Guardar compra</>}
                 </button>
               </div>
             </motion.div>

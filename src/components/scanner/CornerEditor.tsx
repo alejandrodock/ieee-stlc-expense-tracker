@@ -77,16 +77,16 @@ export default function CornerEditor({ previewUrl, width, height, quad, onChange
             <polygon points={points} fill="black" />
           </mask>
         </defs>
-        <rect width={width} height={height} fill="rgba(2,6,23,0.55)" mask="url(#doc-mask)" />
-        <polygon points={points} fill="rgba(34,211,238,0.08)" stroke="#22d3ee" strokeWidth={2.5 * unit} strokeLinejoin="round" />
+        <rect width={width} height={height} fill="rgba(7,18,31,0.6)" mask="url(#doc-mask)" />
+        <polygon points={points} fill="rgba(79,163,209,0.10)" stroke="#4FA3D1" strokeWidth={2.5 * unit} strokeLinejoin="round" />
         {quad.map((p, i) => (
           <g key={i}>
             {/* generous invisible hit area for fingers */}
             <circle cx={p.x} cy={p.y} r={r * 2.2} fill="transparent" className="cursor-grab" onPointerDown={onPointerDown(i)} />
             <circle
               cx={p.x} cy={p.y} r={r}
-              fill={active === i ? '#22d3ee' : 'rgba(255,255,255,0.9)'}
-              stroke="#0891b2" strokeWidth={2.5 * unit}
+              fill={active === i ? '#4FA3D1' : 'rgba(255,255,255,0.9)'}
+              stroke="#00629B" strokeWidth={2.5 * unit}
               pointerEvents="none"
             />
           </g>

@@ -1,15 +1,19 @@
 export const CATEGORIAS = [
-  { value: 'catering', label: 'Catering / Coffee Break', icon: '☕', color: '#F59E0B' },
-  { value: 'transporte', label: 'Transporte Ponentes', icon: '🚗', color: '#3B82F6' },
-  { value: 'imprenta', label: 'Imprenta y Kits', icon: '🖨️', color: '#8B5CF6' },
-  { value: 'hackathon', label: 'Premios / Hackathon', icon: '🏆', color: '#10B981' },
-  { value: 'materiales', label: 'Materiales / Varios', icon: '📦', color: '#EF4444' },
+  { value: 'catering', label: 'Catering / Coffee Break', color: '#C9A45C' },
+  { value: 'transporte', label: 'Transporte Ponentes', color: '#5AA9D6' },
+  { value: 'imprenta', label: 'Imprenta y Kits', color: '#9AA6D8' },
+  { value: 'hackathon', label: 'Premios / Hackathon', color: '#6BBFA5' },
+  { value: 'materiales', label: 'Materiales / Varios', color: '#C98585' },
+  { value: 'operativos', label: 'Gastos operativos (taxis, pasajes)', color: '#8FB0C4' },
 ] as const;
 
+/** Todas las facturas y recibos se emiten a nombre del responsable de fondos. */
+export const RESPONSABLE = 'Ivan Mendoza';
+
 export const TIPOS_COMPROBANTE = [
-  { value: 'factura_ieee', label: 'Factura Oficial (NIT IEEE Sección Bolivia)' },
-  { value: 'factura_personal', label: 'Factura Oficial (C.I. Ivan Mendoza)' },
-  { value: 'recibo', label: 'Recibo de Caja' },
+  { value: 'factura_personal', label: `Factura (C.I. ${RESPONSABLE})` },
+  { value: 'recibo', label: `Recibo (a nombre de ${RESPONSABLE})` },
+  { value: 'sin_comprobante', label: 'Sin factura ni recibo (gasto menor)' },
 ] as const;
 
 export const PRESUPUESTO_INICIAL = 13618.08; // BOB
@@ -21,10 +25,9 @@ export type CategoriaValue = typeof CATEGORIAS[number]['value'];
 export type TipoComprobanteValue = typeof TIPOS_COMPROBANTE[number]['value'] | 'factura';
 
 export function getTipoComprobanteLabel(value: string): string {
-  if (value === 'factura' || value === 'factura_ieee') return 'Factura Oficial (NIT IEEE)';
-  if (value === 'factura_personal') return 'Factura Oficial (C.I. Ivan Mendoza)';
-  if (value === 'recibo') return 'Recibo de Caja';
-  return value;
+  // Registros antiguos ('factura', 'factura_ieee') también se emitieron a nombre del responsable.
+  if (value === 'factura' || value === 'factura_ieee') return `Factura (C.I. ${RESPONSABLE})`;
+  return TIPOS_COMPROBANTE.find((t) => t.value === value)?.label ?? value;
 }
 
 export function getCategoriaLabel(value: string): string {
@@ -32,11 +35,7 @@ export function getCategoriaLabel(value: string): string {
 }
 
 export function getCategoriaColor(value: string): string {
-  return CATEGORIAS.find(c => c.value === value)?.color ?? '#6B7280';
-}
-
-export function getCategoriaIcon(value: string): string {
-  return CATEGORIAS.find(c => c.value === value)?.icon ?? '📋';
+  return CATEGORIAS.find(c => c.value === value)?.color ?? '#93A6BA';
 }
 
 export function sanitizeFilename(text: string): string {

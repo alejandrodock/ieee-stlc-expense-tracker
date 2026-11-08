@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 
@@ -9,14 +9,21 @@ const inter = Inter({
   display: "swap",
 });
 
+const display = Instrument_Serif({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "IEEE STLC ExpenseTracker",
+  title: "IEEE STLC · Rendición de fondos",
   description: "Sistema de gestión de compras, digitalización de facturas/recibos y rendición de fondos para IEEE STLC 2026",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "IEEE ExpenseTracker",
+    title: "IEEE STLC",
   },
   icons: {
     icon: [
@@ -27,7 +34,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#020617",
+  themeColor: "#07121f",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -40,12 +47,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${inter.variable} h-full`}>
+    <html lang="es" className={`${inter.variable} ${display.variable} h-full`}>
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
       </head>
-      <body className="font-sans min-h-full flex flex-col antialiased bg-mesh">
+      <body className="font-sans min-h-full flex flex-col antialiased">
         <ServiceWorkerRegistrar />
         {children}
       </body>

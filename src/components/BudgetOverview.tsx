@@ -1,7 +1,6 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { TrendingDown, Wallet, PieChart } from 'lucide-react';
 import { CATEGORIAS, PRESUPUESTO_INICIAL, formatMonto } from '@/lib/constants';
 import type { Gasto } from '@/lib/types';
 
@@ -14,7 +13,6 @@ export default function BudgetOverview({ gastos }: BudgetOverviewProps) {
   const saldoRestante = PRESUPUESTO_INICIAL - totalGastado;
   const porcentajeGastado = (totalGastado / PRESUPUESTO_INICIAL) * 100;
 
-  // Totals per category
   const gastosPorCategoria = CATEGORIAS.map(cat => {
     const total = gastos
       .filter(g => g.categoria === cat.value)
@@ -22,114 +20,95 @@ export default function BudgetOverview({ gastos }: BudgetOverviewProps) {
     return { ...cat, total };
   }).filter(c => c.total > 0);
 
+  const barColor = porcentajeGastado > 90 ? 'bg-bad' : porcentajeGastado > 70 ? 'bg-warn' : 'bg-signal';
+
   return (
     <div className="space-y-4">
-      {/* Main Balance Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
+      {/* Saldo */}
+      <motion.section
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6 shadow-2xl shadow-blue-900/30"
+        transition={{ duration: 0.4 }}
+        className="relative overflow-hidden rounded-2xl bg-ink-900 border border-line"
       >
-        {/* Background decoration */}
-        <div className="absolute -top-12 -right-12 w-40 h-40 bg-white/5 rounded-full blur-2xl" />
-        <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-cyan-400/10 rounded-full blur-xl" />
-
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-1">
-            <Wallet className="w-4 h-4 text-blue-200" />
-            <span className="text-sm font-medium text-blue-200">Saldo Restante</span>
-          </div>
-          <div className="flex items-baseline gap-2 mb-4">
-            <span className="text-sm text-blue-300">Bs.</span>
-            <span className={`text-4xl font-bold tracking-tight ${
-              saldoRestante >= 0 ? 'text-white' : 'text-red-300'
-            }`}>
+        <div className="absolute inset-x-0 top-0 h-[3px] bg-brand" />
+        <div className="p-6 pb-5">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Saldo disponible</p>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-base text-muted">Bs.</span>
+            <span className={`font-serif text-[46px] leading-none tracking-tight tabular ${saldoRestante >= 0 ? 'text-fg' : 'text-bad'}`}>
               {formatMonto(saldoRestante)}
             </span>
           </div>
 
-          {/* Progress Bar */}
-          <div className="mb-3">
-            <div className="flex justify-between text-xs text-blue-200 mb-1.5">
-              <span>Gastado: Bs. {formatMonto(totalGastado)}</span>
-              <span>{porcentajeGastado.toFixed(1)}%</span>
+          <div className="mt-6">
+            <div className="flex justify-between text-[11px] text-muted mb-2">
+              <span>Ejecutado</span>
+              <span className="tabular">{porcentajeGastado.toFixed(1)} %</span>
             </div>
-            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+            <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(porcentajeGastado, 100)}%` }}
-                transition={{ duration: 1, ease: 'easeOut' }}
-                className={`h-full rounded-full ${
-                  porcentajeGastado > 90
-                    ? 'bg-gradient-to-r from-red-400 to-red-500'
-                    : porcentajeGastado > 70
-                    ? 'bg-gradient-to-r from-amber-400 to-orange-400'
-                    : 'bg-gradient-to-r from-cyan-400 to-emerald-400'
-                }`}
+                transition={{ duration: 0.9, ease: 'easeOut' }}
+                className={`h-full rounded-full ${barColor}`}
               />
             </div>
           </div>
-
-          <div className="flex gap-4 text-xs text-blue-200">
-            <div className="flex items-center gap-1.5">
-              <TrendingDown className="w-3.5 h-3.5" />
-              <span>Presupuesto: Bs. {formatMonto(PRESUPUESTO_INICIAL)}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <PieChart className="w-3.5 h-3.5" />
-              <span>{gastos.length} gastos</span>
-            </div>
-          </div>
         </div>
-      </motion.div>
 
-      {/* Category Breakdown */}
+        <dl className="grid grid-cols-3 border-t border-line text-center">
+          {[
+            { label: 'Presupuesto', value: `Bs. ${formatMonto(PRESUPUESTO_INICIAL)}` },
+            { label: 'Gastado', value: `Bs. ${formatMonto(totalGastado)}` },
+            { label: 'Registros', value: String(gastos.length) },
+          ].map((s, i) => (
+            <div key={s.label} className={`py-3.5 px-2 ${i > 0 ? 'border-l border-line' : ''}`}>
+              <dt className="text-[10px] uppercase tracking-[0.14em] text-faint">{s.label}</dt>
+              <dd className="mt-1 text-[13px] font-medium text-fg tabular">{s.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </motion.section>
+
+      {/* Desglose por categoría */}
       {gastosPorCategoria.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
+        <motion.section
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="rounded-2xl bg-slate-900/80 border border-white/5 p-5"
+          transition={{ duration: 0.4, delay: 0.08 }}
+          className="rounded-2xl bg-ink-900 border border-line p-5"
         >
-          <h3 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
-            <PieChart className="w-4 h-4 text-purple-400" />
-            Desglose por Categoría
-          </h3>
-          <div className="space-y-3">
-            {gastosPorCategoria.map((cat, i) => {
+          <h3 className="text-[11px] uppercase tracking-[0.16em] text-muted mb-4">Por categoría</h3>
+          <div className="space-y-3.5">
+            {gastosPorCategoria.map((cat) => {
               const percentage = totalGastado > 0 ? (cat.total / totalGastado) * 100 : 0;
               return (
-                <motion.div
-                  key={cat.value}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3, delay: i * 0.05 }}
-                  className="space-y-1.5"
-                >
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2">
-                      <span className="text-base">{cat.icon}</span>
-                      <span className="text-slate-300">{cat.label}</span>
+                <div key={cat.value} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[13px]">
+                    <span className="flex items-center gap-2.5 text-fg/90">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                      {cat.label}
                     </span>
-                    <span className="font-medium text-slate-200">
+                    <span className="text-fg tabular">
                       Bs. {formatMonto(cat.total)}
+                      <span className="ml-2 text-[11px] text-faint">{percentage.toFixed(0)} %</span>
                     </span>
                   </div>
-                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-[3px] bg-white/[0.05] rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${percentage}%` }}
-                      transition={{ duration: 0.8, delay: 0.2 + i * 0.05 }}
+                      transition={{ duration: 0.7, delay: 0.15 }}
                       className="h-full rounded-full"
                       style={{ backgroundColor: cat.color }}
                     />
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>
-        </motion.div>
+        </motion.section>
       )}
     </div>
   );
