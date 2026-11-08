@@ -12,7 +12,7 @@ const VENUE = 'Universidad Mayor de San Andrés · La Paz, Bolivia · 2026';
 
 const T = {
   es: {
-    sheet: 'Rendición STLC 2026',
+    sheet: 'Rendición de fondos 2026',
     report: 'RENDICIÓN DE FONDOS',
     generated: 'Generado el',
     holder: 'DATOS DEL RESPONSABLE DE FONDOS',
@@ -34,10 +34,10 @@ const T = {
       'exclusivamente para las actividades del evento, con los comprobantes adjuntos en cada registro.',
     date: 'Fecha', place: 'Lugar', placeValue: 'La Paz, Bolivia',
     dateFmt: 'dd/mm/yyyy',
-    file: 'Rendicion_STLC_2026_IEEE.xlsx',
+    file: 'Rendicion_IEEE_Student_Tech_Leadership_Conference_2026.xlsx',
   },
   en: {
-    sheet: 'STLC 2026 Expense Report',
+    sheet: 'Expense Report 2026',
     report: 'EXPENSE REPORT',
     generated: 'Generated on',
     holder: 'FUND HOLDER INFORMATION',
@@ -59,7 +59,7 @@ const T = {
       'for the activities of the event, with the supporting documents attached to each record.',
     date: 'Date', place: 'Place', placeValue: 'La Paz, Bolivia',
     dateFmt: 'yyyy-mm-dd',
-    file: 'Expense_Report_STLC_2026_IEEE.xlsx',
+    file: 'Expense_Report_IEEE_Student_Tech_Leadership_Conference_2026.xlsx',
   },
 } as const;
 

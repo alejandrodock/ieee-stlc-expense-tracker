@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { FileText, AlertCircle, Trash2, Receipt, Download, HardDrive, Images, Film } from 'lucide-react';
+import { FileText, Trash2, Receipt, Download, HardDrive, Images, Film, Pencil, Paperclip } from 'lucide-react';
 import CategoryIcon from '@/components/CategoryIcon';
 import ShareGalleryButton from '@/components/media/ShareGalleryButton';
 import {
@@ -14,9 +14,11 @@ interface GastosListProps {
   gastos: Gasto[];
   onDelete?: (id: string) => void;
   onEditMedia?: (gasto: Gasto) => void;
+  /** Opens the edit form; step 3 goes straight to attaching the receipt. */
+  onEdit?: (gasto: Gasto, step?: number) => void;
 }
 
-export default function GastosList({ gastos, onDelete, onEditMedia }: GastosListProps) {
+export default function GastosList({ gastos, onDelete, onEditMedia, onEdit }: GastosListProps) {
   if (gastos.length === 0) {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-14">
@@ -149,12 +151,28 @@ export default function GastosList({ gastos, onDelete, onEditMedia }: GastosList
                           )}
                         </>
                       ) : (
-                        <span className="flex items-center gap-1.5 text-[11px] text-warn px-2 py-1">
-                          <AlertCircle className="w-3.5 h-3.5" strokeWidth={1.75} />
-                          Sin comprobante
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onEdit?.(gasto, 3)}
+                          className="flex items-center gap-1.5 text-[11px] font-medium text-warn px-2 py-1 rounded-md hover:bg-warn/10 transition-colors"
+                          title="Falta el comprobante: escanéalo o adjúntalo"
+                        >
+                          <Paperclip className="w-3.5 h-3.5" strokeWidth={1.75} />
+                          Adjuntar
+                        </button>
                       )}
 
+                      {onEdit && (
+                        <button
+                          type="button"
+                          onClick={() => onEdit(gasto)}
+                          className="p-1.5 rounded-md text-faint hover:text-fg hover:bg-white/5 transition-colors"
+                          title="Editar gasto"
+                          aria-label={`Editar gasto de ${gasto.proveedor}`}
+                        >
+                          <Pencil className="w-3.5 h-3.5" strokeWidth={1.75} />
+                        </button>
+                      )}
                       {onDelete && (
                         <button
                           onClick={() => {

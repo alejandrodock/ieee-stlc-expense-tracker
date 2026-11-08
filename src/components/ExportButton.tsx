@@ -4,8 +4,8 @@ import { Download, Loader2, ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const OPTIONS = [
-  { lang: 'es', label: 'Español', file: 'Rendicion_STLC_2026_IEEE.xlsx' },
-  { lang: 'en', label: 'English', file: 'Expense_Report_STLC_2026_IEEE.xlsx' },
+  { lang: 'es', label: 'Español', file: 'Rendicion_IEEE_Student_Tech_Leadership_Conference_2026.xlsx' },
+  { lang: 'en', label: 'English', file: 'Expense_Report_IEEE_Student_Tech_Leadership_Conference_2026.xlsx' },
 ] as const;
 
 export default function ExportButton() {

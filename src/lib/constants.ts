@@ -14,7 +14,7 @@ export const CATEGORIAS = [
 ] as const;
 
 /** Todas las facturas y recibos se emiten a nombre del responsable de fondos. */
-export const RESPONSABLE = 'Ivan Alejandro Mendoza';
+export const RESPONSABLE = 'Ivan Alejandro Mendoza Mendoza';
 
 /** Datos del responsable de fondos (carimbo del reporte de rendición). */
 export const RESPONSABLE_PERFIL = {

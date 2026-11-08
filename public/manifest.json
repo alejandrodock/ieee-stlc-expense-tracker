@@ -1,7 +1,7 @@
 {
-  "name": "IEEE STLC · Rendición de fondos",
-  "short_name": "IEEE STLC",
-  "description": "Gestión de compras y rendición de fondos IEEE STLC 2026",
+  "name": "IEEE Student Tech Leadership Conference · Rendición de fondos",
+  "short_name": "Student Tech Leadership Conference",
+  "description": "Gestión de compras y rendición de fondos del IEEE Student Tech Leadership Conference 2026",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#07121f",

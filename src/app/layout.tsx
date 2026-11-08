@@ -17,13 +17,13 @@ const display = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "IEEE STLC · Rendición de fondos",
-  description: "Sistema de gestión de compras, digitalización de facturas/recibos y rendición de fondos para IEEE STLC 2026",
+  title: "IEEE Student Tech Leadership Conference · Rendición de fondos",
+  description: "Sistema de gestión de compras, digitalización de facturas/recibos y rendición de fondos para el IEEE Student Tech Leadership Conference 2026",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "IEEE STLC",
+    title: "IEEE Student Tech Leadership Conference",
   },
   icons: {
     icon: [

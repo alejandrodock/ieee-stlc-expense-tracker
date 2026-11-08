@@ -11,7 +11,7 @@ import { mediaUrl } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Fotos y videos · IEEE STLC',
+  title: 'Fotos y videos · IEEE Student Tech Leadership Conference',
   robots: { index: false, follow: false },
 };
 

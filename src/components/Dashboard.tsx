@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, RefreshCw, Loader2 } from 'lucide-react';
 import BudgetOverview from '@/components/BudgetOverview';
 import GastosList from '@/components/GastosList';
-import NuevaCompraModal, { DRAFT_KEY } from '@/components/NuevaCompraModal';
+import NuevaCompraModal, { DRAFT_KEY, loadDraft } from '@/components/NuevaCompraModal';
 import ExportButton from '@/components/ExportButton';
 import MediaManager from '@/components/media/MediaManager';
 import { Logo, LogoMark } from '@/components/Logo';
@@ -15,14 +15,38 @@ import type { Gasto } from '@/lib/types';
 export default function Dashboard() {
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  /** Expense being edited (null = registering a new one) and the step to open on. */
+  const [editing, setEditing] = useState<{ id: string; step?: number } | null>(null);
 
   // If the page reloaded mid-registration (Android can discard the tab), reopen the form with its draft.
   useEffect(() => {
-    try { if (localStorage.getItem(DRAFT_KEY)) setIsModalOpen(true); } catch { /* ignore */ }
+    try {
+      if (!localStorage.getItem(DRAFT_KEY)) return;
+      const { editId } = loadDraft();
+      if (editId) setEditing({ id: editId });
+      setIsModalOpen(true);
+    } catch { /* ignore */ }
   }, []);
+
+  // Draft of an expense that no longer exists: drop it instead of keeping a hidden form.
+  useEffect(() => {
+    if (isLoading || loadError || !editing || gastos.some((g) => g.id === editing.id)) return;
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+    setEditing(null);
+    setIsModalOpen(false);
+  }, [isLoading, loadError, editing, gastos]);
+
+  const openEdit = (g: Gasto, step?: number) => {
+    setEditing({ id: g.id, step });
+    setIsModalOpen(true);
+  };
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditing(null);
+  };
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [mediaGastoId, setMediaGastoId] = useState<string | null>(null);
   const mediaGasto = mediaGastoId ? gastos.find((g) => g.id === mediaGastoId) ?? null : null;
 
@@ -63,6 +87,7 @@ export default function Dashboard() {
     }
   };
 
+  const editingGasto = editing ? gastos.find((g) => g.id === editing.id) ?? null : null;
   const totalGastado = gastos.reduce((sum, g) => sum + g.monto_bob, 0);
   const saldoActual = PRESUPUESTO_INICIAL - totalGastado;
 
@@ -114,14 +139,14 @@ export default function Dashboard() {
           </div>
         )}
         <BudgetOverview gastos={gastos} />
-        <GastosList gastos={gastos} onDelete={handleDelete} onEditMedia={(g) => setMediaGastoId(g.id)} />
+        <GastosList gastos={gastos} onDelete={handleDelete} onEditMedia={(g) => setMediaGastoId(g.id)} onEdit={openEdit} />
       </main>
 
       {/* Floating Action Button */}
       <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-[calc(50%-240px+24px)] z-40">
         <motion.button
           whileTap={{ scale: 0.96 }}
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => { setEditing(null); setIsModalOpen(true); }}
           aria-label="Registrar compra"
           className="h-12 pl-4 pr-5 rounded-full bg-brand hover:bg-brand-hover text-white text-sm font-medium flex items-center gap-2 shadow-lg shadow-black/40 ring-1 ring-white/10 transition-colors"
         >
@@ -132,12 +157,15 @@ export default function Dashboard() {
 
       {/* Modal */}
       <AnimatePresence>
-        {isModalOpen && (
+        {isModalOpen && (!editing || editingGasto) && (
           <NuevaCompraModal
+            key={editing?.id ?? 'nuevo'}
             isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
+            onClose={closeModal}
             onSuccess={() => fetchGastos(true)}
             saldoActual={saldoActual}
+            gasto={editingGasto ?? undefined}
+            initialStep={editing?.step}
           />
         )}
       </AnimatePresence>

@@ -13,6 +13,7 @@ import {
 } from '@/lib/constants';
 import DocumentScanner, { type ScanResult } from '@/components/scanner/DocumentScanner';
 import MediaPicker from '@/components/media/MediaPicker';
+import type { Gasto } from '@/lib/types';
 import InAppCamera from '@/components/scanner/InAppCamera';
 
 interface NuevaCompraModalProps {
@@ -20,6 +21,10 @@ interface NuevaCompraModalProps {
   onClose: () => void;
   onSuccess: () => void;
   saldoActual: number;
+  /** When set, the form edits this expense instead of creating a new one. */
+  gasto?: Gasto;
+  /** Step to open on (e.g. 3 to attach the receipt directly). */
+  initialStep?: number;
 }
 
 type Attachment =
@@ -33,9 +38,22 @@ export const DRAFT_KEY = 'nueva-compra-draft';
 type Draft = {
   fecha: string; categoria: string; proveedor: string; descripcion: string;
   observaciones: string; tipoComprobante: string; montoBob: string; step: number;
+  /** Set when the draft belongs to the edition of an existing expense. */
+  editId?: string;
 };
-function loadDraft(): Partial<Draft> {
+export function loadDraft(): Partial<Draft> {
   try { return JSON.parse(localStorage.getItem(DRAFT_KEY) ?? '{}') ?? {}; } catch { return {}; }
+}
+function initialValues(gasto: Gasto | undefined, initialStep: number | undefined): Partial<Draft> {
+  const saved = loadDraft();
+  if ((saved.editId ?? null) === (gasto?.id ?? null) && Object.keys(saved).length) return saved;
+  if (!gasto) return {};
+  return {
+    fecha: gasto.fecha, categoria: gasto.categoria, proveedor: gasto.proveedor,
+    descripcion: gasto.descripcion ?? '', observaciones: gasto.observaciones ?? '',
+    tipoComprobante: gasto.tipo_comprobante, montoBob: String(gasto.monto_bob), step: initialStep ?? 1,
+    editId: gasto.id,
+  };
 }
 function clearDraft() {
   try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
@@ -44,8 +62,9 @@ function clearDraft() {
 const inputCls =
   'w-full px-4 py-3 bg-ink-800 border border-line rounded-xl text-fg text-sm placeholder:text-faint focus:outline-none focus:border-brand-soft/60 focus:ring-2 focus:ring-brand/30 transition-all';
 
-export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActual }: NuevaCompraModalProps) {
-  const [draft] = useState(loadDraft);
+export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActual, gasto, initialStep }: NuevaCompraModalProps) {
+  const editing = !!gasto;
+  const [draft] = useState(() => initialValues(gasto, initialStep));
   const [fecha, setFecha] = useState(draft.fecha ?? todayLocal());
   const [categoria, setCategoria] = useState(draft.categoria ?? '');
   const [proveedor, setProveedor] = useState(draft.proveedor ?? '');
@@ -66,14 +85,16 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const montoNum = Math.round((parseFloat(montoBob) || 0) * 100) / 100;
-  const nuevoSaldo = saldoActual - montoNum;
+  // When editing, the expense's previous amount is already deducted from the balance.
+  const nuevoSaldo = saldoActual + (gasto?.monto_bob ?? 0) - montoNum;
+  const tienePdfGuardado = !!gasto?.pdf_url;
   const montoUsd = montoNum / TIPO_CAMBIO_USD;
   const isSubmitting = status !== null;
 
   useEffect(() => {
-    const d: Draft = { fecha, categoria, proveedor, descripcion, observaciones, tipoComprobante, montoBob, step };
+    const d: Draft = { fecha, categoria, proveedor, descripcion, observaciones, tipoComprobante, montoBob, step, editId: gasto?.id };
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch { /* ignore */ }
-  }, [fecha, categoria, proveedor, descripcion, observaciones, tipoComprobante, montoBob, step]);
+  }, [fecha, categoria, proveedor, descripcion, observaciones, tipoComprobante, montoBob, step, gasto?.id]);
 
   const handleClose = () => {
     if (isSubmitting) return;
@@ -142,36 +163,64 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
     else if (categoria === 'operativos' && tipoComprobante === 'sin_comprobante') setTipoComprobante('factura_personal');
   };
 
+  const uploadPdf = async (id: string, pdf: Uint8Array) => {
+    setStatus('Subiendo comprobante…');
+    const urlRes = await fetch('/api/comprobantes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    if (!urlRes.ok) throw new Error((await urlRes.json().catch(() => null))?.error ?? 'No se pudo preparar la subida');
+    const { signedUrl, maxBytes } = await urlRes.json();
+    if (pdf.byteLength > maxBytes) throw new Error('El PDF generado es demasiado grande');
+    const put = await fetch(signedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/pdf', 'x-upsert': 'true' },
+      body: new Blob([pdf as BlobPart], { type: 'application/pdf' }),
+    });
+    if (!put.ok) throw new Error('No se pudo subir el comprobante');
+  };
+
+  const fetchFirma = () =>
+    fetch('/api/firma', { cache: 'no-store' })
+      .then(async (r) => (r.ok ? new Uint8Array(await r.arrayBuffer()) : null))
+      .catch(() => null);
+
   const handleSubmit = async () => {
     if (!categoria || !proveedor.trim() || montoNum <= 0 || comprobantePendiente) return;
     setError(null);
-    const id = crypto.randomUUID();
+    const id = gasto?.id ?? crypto.randomUUID();
     let tieneComprobante = false;
+    let avisoPdf: string | null = null;
+
+    const datosCambiaron = !!gasto && (
+      gasto.fecha !== fecha || gasto.categoria !== categoria || gasto.proveedor !== proveedor.trim()
+      || (gasto.descripcion ?? '') !== descripcion.trim() || (gasto.observaciones ?? '') !== observaciones.trim()
+      || gasto.tipo_comprobante !== tipoComprobante || Number(gasto.monto_bob) !== montoNum
+    );
 
     try {
-      if (attachment || esGastoMenor) {
+      const meta = {
+        referencia: generatePdfFilename(fecha, categoria, proveedor.trim(), montoNum),
+        fecha,
+        proveedor: proveedor.trim(),
+        categoria: getCategoriaLabel(categoria),
+        tipoComprobante: getTipoComprobanteLabel(tipoComprobante),
+        montoBob: formatMonto(montoNum),
+        montoUsd: formatMonto(montoUsd),
+        tipoCambio: formatTipoCambio(),
+        descripcion: descripcion.trim() || null,
+        observaciones: observaciones.trim() || null,
+        generadoEn: new Intl.DateTimeFormat('es-BO', { dateStyle: 'short', timeStyle: 'short' }).format(new Date()),
+      };
+
+      if (attachment || (esGastoMenor && !tienePdfGuardado)) {
+        // New receipt (or automatic declaration for a minor expense without one yet).
         setStatus('Generando PDF…');
         const { buildScanPdf, buildAttachedPdf, buildDeclaracionPdf } = await import('@/lib/pdf/comprobante');
-        const meta = {
-          referencia: generatePdfFilename(fecha, categoria, proveedor.trim(), montoNum),
-          fecha,
-          proveedor: proveedor.trim(),
-          categoria: getCategoriaLabel(categoria),
-          tipoComprobante: getTipoComprobanteLabel(tipoComprobante),
-          montoBob: formatMonto(montoNum),
-          montoUsd: formatMonto(montoUsd),
-          tipoCambio: formatTipoCambio(),
-          descripcion: descripcion.trim() || null,
-          observaciones: observaciones.trim() || null,
-          generadoEn: new Intl.DateTimeFormat('es-BO', { dateStyle: 'short', timeStyle: 'short' }).format(new Date()),
-        };
-
         let pdf: Uint8Array;
         if (!attachment) {
-          const firma = await fetch('/api/firma', { cache: 'no-store' })
-            .then(async (r) => (r.ok ? new Uint8Array(await r.arrayBuffer()) : null))
-            .catch(() => null);
-          pdf = await buildDeclaracionPdf(meta, firma);
+          pdf = await buildDeclaracionPdf(meta, await fetchFirma());
         } else if (attachment.kind === 'image') {
           pdf = await buildScanPdf(meta, scan!);
         } else {
@@ -179,29 +228,34 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
           pdf = result.bytes;
           if (!result.merged) console.warn('PDF adjunto protegido o inválido: se archiva sin portada.');
         }
-
-        setStatus('Subiendo comprobante…');
-        const urlRes = await fetch('/api/comprobantes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id }),
-        });
-        if (!urlRes.ok) throw new Error((await urlRes.json().catch(() => null))?.error ?? 'No se pudo preparar la subida');
-        const { signedUrl, maxBytes } = await urlRes.json();
-        if (pdf.byteLength > maxBytes) throw new Error('El PDF generado es demasiado grande');
-
-        const put = await fetch(signedUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/pdf', 'x-upsert': 'true' },
-          body: new Blob([pdf as BlobPart], { type: 'application/pdf' }),
-        });
-        if (!put.ok) throw new Error('No se pudo subir el comprobante');
+        await uploadPdf(id, pdf);
         tieneComprobante = true;
+      } else if (gasto && tienePdfGuardado && datosCambiaron) {
+        // Same receipt, new data: rebuild the stored PDF so its cover matches the edit.
+        setStatus('Actualizando PDF…');
+        try {
+          const { rebuildComprobantePdf } = await import('@/lib/pdf/comprobante');
+          const res = await fetch(`/api/comprobantes/${id}`, { cache: 'no-store' });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const rebuilt = await rebuildComprobantePdf(meta, new Uint8Array(await res.arrayBuffer()), {
+            esDeclaracion: esGastoMenor,
+            firmaPng: esGastoMenor ? await fetchFirma() : null,
+          });
+          if (rebuilt) {
+            await uploadPdf(id, rebuilt);
+            tieneComprobante = true;
+          } else {
+            avisoPdf = 'Los datos se guardaron, pero el PDF del comprobante no se pudo actualizar automáticamente (conserva los datos anteriores). Si quieres, vuelve a adjuntarlo con «Editar».';
+          }
+        } catch (err) {
+          console.error('Rebuild PDF error:', err);
+          avisoPdf = 'Los datos se guardaron, pero no se pudo actualizar el PDF del comprobante. Inténtalo de nuevo con «Editar».';
+        }
       }
 
       setStatus('Guardando gasto…');
       const res = await fetch('/api/gastos', {
-        method: 'POST',
+        method: editing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id,
@@ -216,6 +270,7 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
         }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'No se pudo guardar el gasto');
+      if (avisoPdf) alert(avisoPdf);
 
       // Fotos / videos: el gasto ya está guardado, así que un fallo aquí no lo deshace.
       const fallidos: string[] = [];
@@ -274,7 +329,7 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
         {/* Header */}
         <div className="sticky top-0 z-10 bg-ink-900/95 backdrop-blur-md border-b border-line px-6 py-4 flex items-center justify-between rounded-t-3xl sm:rounded-t-2xl">
           <div>
-            <h2 id="nueva-compra-title" className="font-serif text-2xl text-fg leading-none">Registrar compra</h2>
+            <h2 id="nueva-compra-title" className="font-serif text-2xl text-fg leading-none">{editing ? 'Editar compra' : 'Registrar compra'}</h2>
             <p className="mt-1.5 text-[11px] uppercase tracking-[0.14em] text-faint">Paso {step} de 3 · {['Datos', 'Monto', 'Comprobante'][step - 1]}</p>
           </div>
           <button onClick={handleClose} disabled={isSubmitting} aria-label="Cerrar" className="p-2 rounded-full hover:bg-white/10 transition-colors disabled:opacity-40">
@@ -482,20 +537,37 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
                 </div>
               )}
 
-              {!attachment && (
+              {!attachment && tienePdfGuardado && (
+                <a
+                  href={gasto!.pdf_url!} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3.5 rounded-xl bg-ink-850 border border-line hover:border-brand-soft/50 transition-colors"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-brand/15 flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-4 h-4 text-brand-soft" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-fg font-medium">Comprobante actual</p>
+                    <p className="text-[11px] text-muted">Se conserva y se actualiza con los datos editados. Para reemplazarlo, elige una opción de arriba.</p>
+                  </div>
+                </a>
+              )}
+
+              {!attachment && !tienePdfGuardado && (
                 esGastoMenor ? (
                   <p className="text-[11px] text-muted text-center leading-relaxed">
                     Gasto menor sin factura: se generará automáticamente una <span className="text-fg">declaración de gasto</span> en PDF para la rendición.
                     Si tienes algo (p. ej. captura de la app de taxi), puedes adjuntarlo.
                   </p>
                 ) : (
-                  <p className="text-[11px] text-faint text-center">Puedes guardar sin comprobante y adjuntarlo en un registro nuevo más tarde.</p>
+                  <p className="text-[11px] text-faint text-center">Puedes guardar sin comprobante y adjuntarlo después desde el celular con «Adjuntar» o «Editar».</p>
                 )
               )}
 
-              <div className="pt-1">
-                <MediaPicker files={mediaFiles} onChange={setMediaFiles} disabled={isSubmitting} progress={mediaProgress} />
-              </div>
+              {!editing && (
+                <div className="pt-1">
+                  <MediaPicker files={mediaFiles} onChange={setMediaFiles} disabled={isSubmitting} progress={mediaProgress} />
+                </div>
+              )}
 
               {/* Summary */}
               <div className="p-3.5 rounded-xl bg-ink-850 border border-line space-y-1.5 text-xs">
@@ -522,7 +594,7 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
                   disabled={isSubmitting || comprobantePendiente}
                   className="flex-[1.4] py-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                 >
-                  {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {status}</> : <><CheckCircle2 className="w-4 h-4" /> Guardar compra</>}
+                  {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {status}</> : <><CheckCircle2 className="w-4 h-4" /> {editing ? "Guardar cambios" : "Guardar compra"}</>}
                 </button>
               </div>
             </motion.div>
