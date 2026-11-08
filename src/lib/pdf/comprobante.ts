@@ -239,7 +239,7 @@ export async function buildScanPdf(meta: ComprobanteMeta, scan: ScanInput): Prom
  * Minor expense without invoice or receipt (taxi, pasajes…) -> one-page signed
  * declaration that backs the expense in the report.
  */
-export async function buildDeclaracionPdf(meta: ComprobanteMeta): Promise<Uint8Array> {
+export async function buildDeclaracionPdf(meta: ComprobanteMeta, firmaPng?: Uint8Array | null): Promise<Uint8Array> {
   const { doc, fonts: f, clean } = await newDocument();
   setInfo(doc, meta);
   const [W] = A4;
@@ -260,6 +260,17 @@ export async function buildDeclaracionPdf(meta: ComprobanteMeta): Promise<Uint8A
 
   // Firma
   const lineW = 220;
+  if (firmaPng) {
+    try {
+      const img = await doc.embedPng(firmaPng);
+      const h = 48;
+      const w = Math.min(lineW - 20, (img.width / img.height) * h);
+      const hh = (img.height / img.width) * w;
+      page.drawImage(img, { x: M + (lineW - w) / 2, y: y - 4, width: w, height: hh });
+    } catch (err) {
+      console.warn('No se pudo insertar la firma:', err);
+    }
+  }
   page.drawLine({ start: { x: M, y }, end: { x: M + lineW, y }, thickness: 0.8, color: C.slate500 });
   page.drawText(clean(RESPONSABLE), { x: M, y: y - 13, size: 9.5, font: f.bold, color: C.slate800 });
   page.drawText(clean(`Responsable de fondos · C.I.: ${RESPONSABLE_PERFIL.ci}`), { x: M, y: y - 26, size: 8.5, font: f.regular, color: C.slate500 });

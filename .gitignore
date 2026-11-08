@@ -40,3 +40,7 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# firma digital (privada: solo en la variable FIRMA_PNG_BASE64 de Vercel)
+firma.png
+firma*.png

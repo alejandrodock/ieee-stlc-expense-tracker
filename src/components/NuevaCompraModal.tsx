@@ -168,7 +168,10 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
 
         let pdf: Uint8Array;
         if (!attachment) {
-          pdf = await buildDeclaracionPdf(meta);
+          const firma = await fetch('/api/firma', { cache: 'no-store' })
+            .then(async (r) => (r.ok ? new Uint8Array(await r.arrayBuffer()) : null))
+            .catch(() => null);
+          pdf = await buildDeclaracionPdf(meta, firma);
         } else if (attachment.kind === 'image') {
           pdf = await buildScanPdf(meta, scan!);
         } else {

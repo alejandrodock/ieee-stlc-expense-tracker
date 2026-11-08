@@ -5,6 +5,7 @@ import {
   getCategoriaLabel, getTipoComprobanteLabel, type Lang,
 } from '@/lib/constants';
 import { galeriaUrl, type Gasto } from '@/lib/types';
+import { getFirmaPng, pngSize } from '@/lib/server/firma';
 
 const EVENT = 'IEEE Student Tech Leadership Conference';
 const VENUE = 'Universidad Mayor de San Andrés · La Paz, Bolivia · 2026';
@@ -364,6 +365,28 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   for (let col = 7; col <= 9; col++) {
     const c = ws.getRow(boxTop + boxRows - 2).getCell(col);
     c.border = { ...(c.border ?? {}), bottom: { style: 'thin', color: { argb: 'FF14283E' } } };
+  }
+  // Firma digital sobre la línea (G–I), si está configurada
+  const firma = getFirmaPng();
+  if (firma) {
+    const { width, height } = pngSize(firma);
+    const h = 72; // px ≈ 2.7 filas de 20 pt
+    const w = Math.round((width / height) * h);
+    const imageId = wb.addImage({ buffer: firma as unknown as ExcelJS.Buffer, extension: 'png' });
+    // anchors are 0-based; the line is the bottom edge of row (boxTop + boxRows - 2), 1-based
+    const lineRow0 = boxTop + boxRows - 2;
+    const EMU_PX = 9525;
+    const colPx = (c: number) => Math.round(7 * (ws.getColumn(c).width ?? 10) + 5);
+    const linePx = colPx(7) + colPx(8) + colPx(9); // G + H + I
+    ws.addImage(imageId, {
+      // empieza 3 filas por encima de la línea; la firma (2.7 filas) roza la línea, como firmada a mano
+      tl: {
+        nativeCol: 6, nativeColOff: Math.max(0, Math.round((linePx - w) / 2)) * EMU_PX,
+        nativeRow: lineRow0 - 3, nativeRowOff: Math.round(0.33 * 20 * 12700),
+      } as unknown as ExcelJS.Anchor,
+      ext: { width: w, height: h },
+      editAs: 'oneCell',
+    });
   }
   r += boxRows;
 
