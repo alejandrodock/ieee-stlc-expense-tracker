@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, ImagePlus, Trash2, Loader2, Film, ExternalLink, Download, AlertTriangle } from 'lucide-react';
 import { MAX_MEDIA, MAX_MEDIA_MB, formatMonto } from '@/lib/constants';
@@ -28,11 +28,31 @@ export default function MediaManager({ gasto, onClose, onChanged }: MediaManager
   const busy = pending.length > 0 || deleting !== null;
   const free = MAX_MEDIA - media.length - pending.length;
 
-  const update = (next: GastoMedia[]) => {
-    const sorted = sortMedia(next);
-    setMedia(sorted);
-    onChanged(gasto.id, sorted);
-  };
+  // Always apply changes on top of the latest list: uploads can overlap (adding a
+  // photo while another is still uploading) and must not overwrite each other.
+  const update = (fn: (prev: GastoMedia[]) => GastoMedia[]) => setMedia((prev) => sortMedia(fn(prev)));
+
+  // Keep the dashboard in sync (ref avoids a render loop: onChanged is a new function each render).
+  const onChangedRef = useRef(onChanged);
+  onChangedRef.current = onChanged;
+  const firstSync = useRef(true);
+  useEffect(() => {
+    if (firstSync.current) { firstSync.current = false; return; }
+    onChangedRef.current(gasto.id, media);
+  }, [gasto.id, media]);
+
+  /** Re-read what is actually stored, so the count never drifts from the server. */
+  const refresh = useCallback(async () => {
+    try {
+      const res = await fetch('/api/gastos', { cache: 'no-store' });
+      if (!res.ok) return;
+      const list = (await res.json()) as Gasto[];
+      const fresh = list.find((g) => g.id === gasto.id);
+      if (fresh) setMedia(sortMedia(fresh.media ?? []));
+    } catch { /* offline: keep local state */ }
+  }, [gasto.id]);
+
+  useEffect(() => { refresh(); }, [refresh]);
 
   const addFiles = async (list: FileList | File[] | null) => {
     if (!list) return;
@@ -51,20 +71,21 @@ export default function MediaManager({ gasto, onClose, onChanged }: MediaManager
     const jobs = accepted.map((f, i) => ({ key: `${Date.now()}-${i}`, file: f }));
     setPending((p) => [...p, ...jobs.map((j) => ({ key: j.key, name: j.file.name, progress: 0 }))]);
 
-    let current = media;
+    let failed = false;
     for (const job of jobs) {
       try {
         const row = await uploadMedia(gasto.id, job.file, (progress) =>
           setPending((p) => p.map((x) => (x.key === job.key ? { ...x, progress } : x))),
         );
-        current = [...current, row];
-        update(current);
+        update((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]));
       } catch (e) {
+        failed = true;
         setError(e instanceof Error ? `${job.file.name}: ${e.message}` : 'No se pudo subir el archivo');
       } finally {
         setPending((p) => p.filter((x) => x.key !== job.key));
       }
     }
+    if (failed) await refresh();
   };
 
   const remove = async (m: GastoMedia) => {
@@ -73,9 +94,10 @@ export default function MediaManager({ gasto, onClose, onChanged }: MediaManager
     setError(null);
     try {
       await deleteMedia(m.id);
-      update(media.filter((x) => x.id !== m.id));
+      update((prev) => prev.filter((x) => x.id !== m.id));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo eliminar');
+      await refresh();
     } finally {
       setDeleting(null);
     }
