@@ -1,19 +1,21 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { FileText, AlertCircle, Trash2, Receipt, Download, HardDrive } from 'lucide-react';
+import { FileText, AlertCircle, Trash2, Receipt, Download, HardDrive, Images, Film } from 'lucide-react';
 import CategoryIcon from '@/components/CategoryIcon';
 import {
-  getCategoriaLabel, getTipoComprobanteLabel, formatMonto, formatDate
+  getCategoriaLabel, getTipoComprobanteLabel, formatMonto, formatDate, MAX_MEDIA,
 } from '@/lib/constants';
-import type { Gasto } from '@/lib/types';
+import { isVideoMime } from '@/lib/media-client';
+import { mediaUrl, type Gasto } from '@/lib/types';
 
 interface GastosListProps {
   gastos: Gasto[];
   onDelete?: (id: string) => void;
+  onEditMedia?: (gasto: Gasto) => void;
 }
 
-export default function GastosList({ gastos, onDelete }: GastosListProps) {
+export default function GastosList({ gastos, onDelete, onEditMedia }: GastosListProps) {
   if (gastos.length === 0) {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-14">
@@ -36,6 +38,7 @@ export default function GastosList({ gastos, onDelete }: GastosListProps) {
       <ul className="rounded-2xl bg-ink-900 border border-line divide-y divide-line overflow-hidden">
         {gastos.map((gasto, i) => {
           const pdf = gasto.pdf_url ?? gasto.drive_url;
+          const media = gasto.media ?? [];
           return (
             <motion.li
               key={gasto.id}
@@ -73,10 +76,42 @@ export default function GastosList({ gastos, onDelete }: GastosListProps) {
                     </p>
                   )}
 
+                  {media.length > 0 && (
+                    <div className="mt-2.5 flex gap-1.5">
+                      {media.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => onEditMedia?.(gasto)}
+                          className="relative w-12 h-12 rounded-lg overflow-hidden border border-line bg-ink-800 hover:border-brand-soft/60 transition-colors"
+                          title={m.nombre ?? undefined}
+                        >
+                          {isVideoMime(m.mime_type) ? (
+                            <span className="w-full h-full flex items-center justify-center text-muted"><Film className="w-4 h-4" strokeWidth={1.75} /></span>
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={mediaUrl(m.id)} alt="" loading="lazy" className="w-full h-full object-cover" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="flex items-center flex-wrap gap-x-3 gap-y-1.5 mt-3">
                     <span className="text-[11px] text-faint">{getTipoComprobanteLabel(gasto.tipo_comprobante)}</span>
 
                     <div className="ml-auto flex items-center gap-1">
+                      {onEditMedia && (
+                        <button
+                          type="button"
+                          onClick={() => onEditMedia(gasto)}
+                          className="flex items-center gap-1.5 text-[11px] font-medium text-muted hover:text-fg px-2 py-1 rounded-md hover:bg-white/5 transition-colors"
+                          title="Agregar o editar fotos y videos"
+                        >
+                          <Images className="w-3.5 h-3.5" strokeWidth={1.75} />
+                          {media.length > 0 ? `${media.length}/${MAX_MEDIA}` : 'Fotos'}
+                        </button>
+                      )}
                       {pdf ? (
                         <>
                           <a

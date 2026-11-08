@@ -7,6 +7,7 @@ import {
 import { isDriveSyncEnabled, trashInDrive, uploadToDrive } from '@/lib/server/drive';
 import { generatePdfFilename, getCategoriaLabel } from '@/lib/constants';
 import { GASTO_COLUMNS } from '@/lib/types';
+import { removeGastoMediaFiles } from '@/lib/server/media';
 
 export const dynamic = 'force-dynamic';
 
@@ -121,6 +122,8 @@ export async function DELETE(req: NextRequest) {
 
     const { error: storageError } = await supabase.storage.from(COMPROBANTES_BUCKET).remove([comprobantePath(id)]);
     if (storageError) console.warn('Receipt cleanup failed (non-fatal):', storageError.message);
+    // Rows in gasto_media go away with ON DELETE CASCADE; remove the files too.
+    await removeGastoMediaFiles(id).catch((e) => console.warn('Media cleanup failed (non-fatal):', e));
 
     return NextResponse.json({ success: true });
   } catch (error) {

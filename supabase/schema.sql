@@ -58,3 +58,17 @@ ORDER BY total_bob DESC;
 
 -- Not exposed through the public API
 REVOKE ALL ON resumen_categorias FROM anon, authenticated;
+
+-- Fotos y videos de cada gasto (máx. 3, controlado por la app).
+-- Archivos en el bucket privado "evidencias" (creado automáticamente por la app).
+CREATE TABLE IF NOT EXISTS gasto_media (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  gasto_id UUID NOT NULL REFERENCES gastos(id) ON DELETE CASCADE,
+  path TEXT NOT NULL UNIQUE,
+  nombre TEXT,
+  mime_type TEXT NOT NULL,
+  size_bytes BIGINT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_gasto_media_gasto ON gasto_media(gasto_id);
+ALTER TABLE gasto_media ENABLE ROW LEVEL SECURITY;

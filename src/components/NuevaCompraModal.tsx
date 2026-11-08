@@ -12,6 +12,7 @@ import {
   formatTipoCambio, todayLocal,
 } from '@/lib/constants';
 import DocumentScanner, { type ScanResult } from '@/components/scanner/DocumentScanner';
+import MediaPicker from '@/components/media/MediaPicker';
 
 interface NuevaCompraModalProps {
   isOpen: boolean;
@@ -40,6 +41,8 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [mediaProgress, setMediaProgress] = useState<(number | undefined)[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -174,9 +177,29 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
       });
       if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'No se pudo guardar el gasto');
 
+      // Fotos / videos: el gasto ya está guardado, así que un fallo aquí no lo deshace.
+      const fallidos: string[] = [];
+      if (mediaFiles.length) {
+        const { uploadMedia } = await import('@/lib/media-client');
+        for (let i = 0; i < mediaFiles.length; i++) {
+          setStatus(`Subiendo multimedia ${i + 1} de ${mediaFiles.length}…`);
+          try {
+            await uploadMedia(id, mediaFiles[i], (p) =>
+              setMediaProgress((prev) => { const next = [...prev]; next[i] = p; return next; }),
+            );
+          } catch (err) {
+            console.error('Media upload error:', err);
+            fallidos.push(mediaFiles[i].name);
+          }
+        }
+      }
+
       setStatus(null);
       onSuccess();
       onClose();
+      if (fallidos.length) {
+        alert(`El gasto se guardó, pero no se pudo subir: ${fallidos.join(', ')}.\nPuedes agregarlo luego con el botón «Fotos» del gasto.`);
+      }
     } catch (e) {
       console.error('Submit error:', e);
       setError(e instanceof Error ? e.message : 'Error al guardar. Inténtalo de nuevo.');
@@ -426,6 +449,10 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
                   <p className="text-[11px] text-faint text-center">Puedes guardar sin comprobante y adjuntarlo en un registro nuevo más tarde.</p>
                 )
               )}
+
+              <div className="pt-1">
+                <MediaPicker files={mediaFiles} onChange={setMediaFiles} disabled={isSubmitting} progress={mediaProgress} />
+              </div>
 
               {/* Summary */}
               <div className="p-3.5 rounded-xl bg-ink-850 border border-line space-y-1.5 text-xs">

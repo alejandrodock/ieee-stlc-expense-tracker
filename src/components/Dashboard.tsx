@@ -7,6 +7,7 @@ import BudgetOverview from '@/components/BudgetOverview';
 import GastosList from '@/components/GastosList';
 import NuevaCompraModal from '@/components/NuevaCompraModal';
 import ExportButton from '@/components/ExportButton';
+import MediaManager from '@/components/media/MediaManager';
 import { Logo, LogoMark } from '@/components/Logo';
 import { PRESUPUESTO_INICIAL } from '@/lib/constants';
 import type { Gasto } from '@/lib/types';
@@ -17,6 +18,8 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [mediaGastoId, setMediaGastoId] = useState<string | null>(null);
+  const mediaGasto = mediaGastoId ? gastos.find((g) => g.id === mediaGastoId) ?? null : null;
 
   const fetchGastos = useCallback(async (showRefresh = false) => {
     if (showRefresh) setIsRefreshing(true);
@@ -106,7 +109,7 @@ export default function Dashboard() {
           </div>
         )}
         <BudgetOverview gastos={gastos} />
-        <GastosList gastos={gastos} onDelete={handleDelete} />
+        <GastosList gastos={gastos} onDelete={handleDelete} onEditMedia={(g) => setMediaGastoId(g.id)} />
       </main>
 
       {/* Floating Action Button */}
@@ -130,6 +133,16 @@ export default function Dashboard() {
             onClose={() => setIsModalOpen(false)}
             onSuccess={() => fetchGastos(true)}
             saldoActual={saldoActual}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {mediaGasto && (
+          <MediaManager
+            gasto={mediaGasto}
+            onClose={() => setMediaGastoId(null)}
+            onChanged={(id, media) => setGastos((prev) => prev.map((g) => (g.id === id ? { ...g, media } : g)))}
           />
         )}
       </AnimatePresence>

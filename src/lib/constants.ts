@@ -32,6 +32,11 @@ export const TIPOS_COMPROBANTE = [
   { value: 'sin_comprobante', label: 'Sin factura ni recibo (gasto menor)', labelEn: 'No invoice or receipt (minor expense)' },
 ] as const;
 
+/** Fotos o videos de respaldo por gasto (además del comprobante PDF). */
+export const MAX_MEDIA = 3;
+/** Límite por archivo (el plan gratuito de Supabase Storage admite hasta 50 MB). */
+export const MAX_MEDIA_MB = 50;
+
 /** Bolivianos por dólar usados para el equivalente en USD de la rendición. */
 export const TIPO_CAMBIO_USD = 11.58;
 
