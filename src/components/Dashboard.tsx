@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, RefreshCw, Loader2 } from 'lucide-react';
 import BudgetOverview from '@/components/BudgetOverview';
 import GastosList from '@/components/GastosList';
-import NuevaCompraModal from '@/components/NuevaCompraModal';
+import NuevaCompraModal, { DRAFT_KEY } from '@/components/NuevaCompraModal';
 import ExportButton from '@/components/ExportButton';
 import MediaManager from '@/components/media/MediaManager';
 import { Logo, LogoMark } from '@/components/Logo';
@@ -16,6 +16,11 @@ export default function Dashboard() {
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // If the page reloaded mid-registration (Android can discard the tab), reopen the form with its draft.
+  useEffect(() => {
+    try { if (localStorage.getItem(DRAFT_KEY)) setIsModalOpen(true); } catch { /* ignore */ }
+  }, []);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mediaGastoId, setMediaGastoId] = useState<string | null>(null);

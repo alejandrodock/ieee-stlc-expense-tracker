@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   X, Calendar, Tag, FileText, DollarSign, Camera, Upload, Loader2, CheckCircle2,
@@ -13,6 +13,7 @@ import {
 } from '@/lib/constants';
 import DocumentScanner, { type ScanResult } from '@/components/scanner/DocumentScanner';
 import MediaPicker from '@/components/media/MediaPicker';
+import InAppCamera from '@/components/scanner/InAppCamera';
 
 interface NuevaCompraModalProps {
   isOpen: boolean;
@@ -27,24 +28,39 @@ type Attachment =
 
 const MAX_PDF_MB = 20;
 
+/** Draft saved locally so a page reload (e.g. Android discarding the tab) doesn't lose the form. */
+export const DRAFT_KEY = 'nueva-compra-draft';
+type Draft = {
+  fecha: string; categoria: string; proveedor: string; descripcion: string;
+  observaciones: string; tipoComprobante: string; montoBob: string; step: number;
+};
+function loadDraft(): Partial<Draft> {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEY) ?? '{}') ?? {}; } catch { return {}; }
+}
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+}
+
 const inputCls =
   'w-full px-4 py-3 bg-ink-800 border border-line rounded-xl text-fg text-sm placeholder:text-faint focus:outline-none focus:border-brand-soft/60 focus:ring-2 focus:ring-brand/30 transition-all';
 
 export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActual }: NuevaCompraModalProps) {
-  const [fecha, setFecha] = useState(todayLocal);
-  const [categoria, setCategoria] = useState('');
-  const [proveedor, setProveedor] = useState('');
-  const [descripcion, setDescripcion] = useState('');
-  const [observaciones, setObservaciones] = useState('');
-  const [tipoComprobante, setTipoComprobante] = useState<string>('factura_personal');
-  const [montoBob, setMontoBob] = useState('');
+  const [draft] = useState(loadDraft);
+  const [fecha, setFecha] = useState(draft.fecha ?? todayLocal());
+  const [categoria, setCategoria] = useState(draft.categoria ?? '');
+  const [proveedor, setProveedor] = useState(draft.proveedor ?? '');
+  const [descripcion, setDescripcion] = useState(draft.descripcion ?? '');
+  const [observaciones, setObservaciones] = useState(draft.observaciones ?? '');
+  const [tipoComprobante, setTipoComprobante] = useState<string>(draft.tipoComprobante ?? 'factura_personal');
+  const [montoBob, setMontoBob] = useState(draft.montoBob ?? '');
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaProgress, setMediaProgress] = useState<(number | undefined)[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(draft.step ?? 1);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
@@ -54,9 +70,30 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
   const montoUsd = montoNum / TIPO_CAMBIO_USD;
   const isSubmitting = status !== null;
 
+  useEffect(() => {
+    const d: Draft = { fecha, categoria, proveedor, descripcion, observaciones, tipoComprobante, montoBob, step };
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch { /* ignore */ }
+  }, [fecha, categoria, proveedor, descripcion, observaciones, tipoComprobante, montoBob, step]);
+
   const handleClose = () => {
     if (isSubmitting) return;
+    clearDraft();
     onClose();
+  };
+
+  const openCamera = () => {
+    if (typeof navigator !== 'undefined' && 'mediaDevices' in navigator && window.isSecureContext) setCameraOpen(true);
+    else cameraInputRef.current?.click();
+  };
+  const onCameraUnavailable = useCallback(() => {
+    setCameraOpen(false);
+    cameraInputRef.current?.click();
+  }, []);
+  const onCameraCapture = (file: File) => {
+    setCameraOpen(false);
+    setError(null);
+    setScan(null);
+    setAttachment({ kind: 'image', file });
   };
 
   const handleScanChange = useCallback((s: ScanResult | null) => setScan(s), []);
@@ -195,6 +232,7 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
       }
 
       setStatus(null);
+      clearDraft();
       onSuccess();
       onClose();
       if (fallidos.length) {
@@ -210,6 +248,8 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
   if (!isOpen) return null;
 
   return (
+    <>
+    {cameraOpen && <InAppCamera onCapture={onCameraCapture} onClose={() => setCameraOpen(false)} onUnavailable={onCameraUnavailable} />}
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -400,12 +440,12 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
               {!attachment && (
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { ref: cameraInputRef, icon: Camera, title: 'Escanear', sub: 'Cámara', border: 'hover:border-brand-soft/50', bg: 'bg-brand/15', text: 'text-brand-soft' },
+                    { ref: cameraInputRef, open: openCamera, icon: Camera, title: 'Escanear', sub: 'Cámara', border: 'hover:border-brand-soft/50', bg: 'bg-brand/15', text: 'text-brand-soft' },
                     { ref: fileInputRef, icon: Upload, title: 'Imagen', sub: 'Galería', border: 'hover:border-brand-soft/50', bg: 'bg-brand/15', text: 'text-brand-soft' },
                     { ref: pdfInputRef, icon: FileUp, title: 'PDF', sub: 'Recibo digital', border: 'hover:border-brand-soft/50', bg: 'bg-brand/15', text: 'text-brand-soft' },
-                  ].map(({ ref, icon: Icon, title, sub, border, bg, text }) => (
+                  ].map(({ ref, open, icon: Icon, title, sub, border, bg, text }: { ref: React.RefObject<HTMLInputElement | null>; open?: () => void; icon: typeof Camera; title: string; sub: string; border: string; bg: string; text: string }) => (
                     <button
-                      key={title} type="button" onClick={() => ref.current?.click()}
+                      key={title} type="button" onClick={() => (open ? open() : ref.current?.click())}
                       className={`flex flex-col items-center justify-center gap-1.5 p-4 rounded-xl border border-dashed border-line-strong hover:bg-white/[0.03] transition-colors group ${border}`}
                     >
                       <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center `}>
@@ -487,5 +527,6 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
         </div>
       </motion.div>
     </motion.div>
+    </>
   );
 }
