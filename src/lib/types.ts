@@ -31,3 +31,6 @@ export const GASTO_COLUMNS =
   'id, created_at, fecha, categoria, proveedor, descripcion, observaciones, tipo_comprobante, monto_bob, monto_usd, pdf_url, drive_file_id, drive_url, media:gasto_media(id, nombre, mime_type, created_at)';
 
 export const mediaUrl = (id: string) => `/api/media/${id}`;
+
+/** Public gallery page with every photo / video of an expense (shareable link). */
+export const galeriaUrl = (gastoId: string) => `/galeria/${gastoId}`;

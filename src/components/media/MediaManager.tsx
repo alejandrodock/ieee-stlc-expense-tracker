@@ -5,7 +5,8 @@ import { motion } from 'framer-motion';
 import { X, ImagePlus, Trash2, Loader2, Film, ExternalLink, Download, AlertTriangle } from 'lucide-react';
 import { MAX_MEDIA, MAX_MEDIA_MB, formatMonto } from '@/lib/constants';
 import { checkMediaFile, deleteMedia, isVideoMime, uploadMedia } from '@/lib/media-client';
-import { mediaUrl, type Gasto, type GastoMedia } from '@/lib/types';
+import { galeriaUrl, mediaUrl, type Gasto, type GastoMedia } from '@/lib/types';
+import ShareGalleryButton from './ShareGalleryButton';
 
 interface MediaManagerProps {
   gasto: Gasto;
@@ -194,13 +195,28 @@ export default function MediaManager({ gasto, onClose, onChanged }: MediaManager
             arrastrar los archivos a esta ventana. Toca una miniatura para verla en grande <ExternalLink className="inline w-3 h-3" />.
           </p>
 
-          <button
-            onClick={close}
-            disabled={busy}
-            className="w-full py-3 rounded-xl border border-line-strong text-fg/80 text-sm font-medium hover:bg-white/5 transition-colors disabled:opacity-40"
-          >
-            {busy ? 'Subiendo…' : 'Listo'}
-          </button>
+          <div className="flex gap-2">
+            {media.length > 0 && (
+              <>
+                <ShareGalleryButton gastoId={gasto.id} title={gasto.proveedor} variant="full" />
+                <a
+                  href={galeriaUrl(gasto.id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1.5 px-4 rounded-xl border border-line-strong text-fg/80 text-sm hover:bg-white/5 transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" /> Ver
+                </a>
+              </>
+            )}
+            <button
+              onClick={close}
+              disabled={busy}
+              className="flex-1 py-2.5 rounded-xl border border-line-strong text-fg/80 text-sm font-medium hover:bg-white/5 transition-colors disabled:opacity-40"
+            >
+              {busy ? 'Subiendo…' : 'Listo'}
+            </button>
+          </div>
         </div>
       </motion.div>
     </motion.div>

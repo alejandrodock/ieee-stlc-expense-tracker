@@ -4,7 +4,7 @@ import {
   CATEGORIAS, MONTO_ASIGNADO_USD, PRESUPUESTO_INICIAL, RESPONSABLE_PERFIL, TIPO_CAMBIO_USD,
   getCategoriaLabel, getTipoComprobanteLabel, type Lang,
 } from '@/lib/constants';
-import type { Gasto } from '@/lib/types';
+import { galeriaUrl, type Gasto } from '@/lib/types';
 
 const EVENT = 'IEEE Student Tech Leadership Conference';
 const VENUE = 'Universidad Mayor de San Andrés · La Paz, Bolivia · 2026';
@@ -24,8 +24,8 @@ const T = {
     byCat: 'RESUMEN POR CATEGORÍA',
     cat: 'Categoría', nItems: 'N° de gastos', share: '% del total',
     detail: 'DETALLE DE GASTOS',
-    cols: ['N°', 'Fecha', 'Categoría', 'Proveedor o concepto', 'Descripción de los elementos', 'Observaciones', 'Tipo de comprobante', 'Monto (Bs)', 'Monto (USD)', 'Comprobante'],
-    total: 'TOTAL', view: 'Ver PDF', none: 'Sin comprobante', noExpenses: 'No hay gastos registrados.',
+    cols: ['N°', 'Fecha', 'Categoría', 'Proveedor o concepto', 'Descripción de los elementos', 'Observaciones', 'Tipo de comprobante', 'Monto (Bs)', 'Monto (USD)', 'Comprobante', 'Fotos y videos'],
+    total: 'TOTAL', view: 'Ver PDF', none: 'Sin comprobante', files: (n: number) => `Ver ${n} archivo${n === 1 ? '' : 's'}`, noExpenses: 'No hay gastos registrados.',
     signTitle: 'FIRMA DEL RESPONSABLE',
     signHere: 'Firma digital',
     declaration:
@@ -49,8 +49,8 @@ const T = {
     byCat: 'SUMMARY BY CATEGORY',
     cat: 'Category', nItems: 'No. of expenses', share: '% of total',
     detail: 'EXPENSE DETAIL',
-    cols: ['No.', 'Date', 'Category', 'Vendor or item', 'Item description', 'Notes', 'Receipt type', 'Amount (BOB)', 'Amount (USD)', 'Receipt'],
-    total: 'TOTAL', view: 'View PDF', none: 'No receipt', noExpenses: 'No expenses recorded.',
+    cols: ['No.', 'Date', 'Category', 'Vendor or item', 'Item description', 'Notes', 'Receipt type', 'Amount (BOB)', 'Amount (USD)', 'Receipt', 'Photos and videos'],
+    total: 'TOTAL', view: 'View PDF', none: 'No receipt', files: (n: number) => `View ${n} file${n === 1 ? '' : 's'}`, noExpenses: 'No expenses recorded.',
     signTitle: 'FUND HOLDER SIGNATURE',
     signHere: 'Digital signature',
     declaration:
@@ -97,7 +97,7 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     headerFooter: { oddFooter: `&L${EVENT}&R&P / &N` },
     views: [{ showGridLines: false }],
   });
-  ws.columns = [6, 12, 24, 26, 40, 30, 32, 15, 14, 16].map((width) => ({ width }));
+  ws.columns = [6, 12, 24, 26, 40, 30, 32, 15, 14, 16, 18].map((width) => ({ width }));
 
   const totalBob = round2(gastos.reduce((s, g) => s + Number(g.monto_bob), 0));
   // USD por gasto = el guardado en cada registro; todos los totales suman esos mismos valores.
@@ -121,7 +121,7 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   const conDoc = gastos.filter((g) => g.pdf_url || g.drive_url).length;
 
   /** Merge a range and style it as a section bar. */
-  const sectionBar = (row: number, text: string, from = 'A', to = 'J') => {
+  const sectionBar = (row: number, text: string, from = 'A', to = 'K') => {
     ws.mergeCells(`${from}${row}:${to}${row}`);
     const c = ws.getCell(`${from}${row}`);
     c.value = text;
@@ -132,7 +132,7 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   };
 
   // ── Encabezado ──────────────────────────────────────────────
-  ws.mergeCells('A1:J1');
+  ws.mergeCells('A1:K1');
   Object.assign(ws.getCell('A1'), {
     value: EVENT,
     font: { bold: true, size: 16, color: { argb: WHITE } },
@@ -140,14 +140,14 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     alignment: { vertical: 'middle', indent: 1 },
   });
   ws.getRow(1).height = 30;
-  ws.mergeCells('A2:J2');
+  ws.mergeCells('A2:K2');
   Object.assign(ws.getCell('A2'), {
     value: VENUE,
     font: { size: 10, color: { argb: WHITE } },
     fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } },
     alignment: { vertical: 'middle', indent: 1 },
   });
-  ws.mergeCells('A3:J3');
+  ws.mergeCells('A3:K3');
   const generated = new Intl.DateTimeFormat(lang === 'es' ? 'es-BO' : 'en-US', {
     dateStyle: 'long', timeStyle: 'short', timeZone: 'America/La_Paz',
   }).format(new Date());
@@ -159,10 +159,10 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   });
   ws.getRow(3).height = 18;
 
-  // ── Carimbo: responsable (A–F) + resumen (G–J) ─────────────
+  // ── Carimbo: responsable (A–F) + resumen (G–K) ─────────────
   let r = 5;
   sectionBar(r, t.holder, 'A', 'F');
-  sectionBar(r, t.summary, 'G', 'J');
+  sectionBar(r, t.summary, 'G', 'K');
   r++;
 
   const holder: [string, string | number, string?][] = [
@@ -208,7 +208,7 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   summary.forEach(([label, value, fmt], i) => {
     const row = r + i;
     ws.mergeCells(`G${row}:H${row}`);
-    ws.mergeCells(`I${row}:J${row}`);
+    ws.mergeCells(`I${row}:K${row}`);
     const l = ws.getCell(`G${row}`);
     l.value = label;
     l.font = { bold: true, size: 9, color: { argb: MUTED } };
@@ -219,15 +219,15 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     v.numFmt = fmt;
     v.font = { size: 10, bold: i < 4 };
     v.alignment = { vertical: 'middle', horizontal: 'right', indent: 1 };
-    for (const col of ['G', 'H', 'I', 'J']) ws.getCell(`${col}${row}`).border = allThin;
+    for (const col of ['G', 'H', 'I', 'J', 'K']) ws.getCell(`${col}${row}`).border = allThin;
   });
   // marco del carimbo
   const stampBottom = r + holder.length - 1;
   for (let row = stampTop; row <= stampBottom; row++) {
     ws.getCell(`A${row}`).border = { ...allThin, left: medium };
-    ws.getCell(`J${row}`).border = { ...allThin, right: medium };
+    ws.getCell(`K${row}`).border = { ...allThin, right: medium };
   }
-  for (const col of ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']) {
+  for (const col of ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']) {
     const c = ws.getCell(`${col}${stampBottom}`);
     c.border = { ...(c.border ?? allThin), bottom: medium };
   }
@@ -283,13 +283,13 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   r++;
   const head = ws.getRow(r);
   t.cols.forEach((h, i) => (head.getCell(i + 1).value = h));
-  styleHeaderRow(head, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  styleHeaderRow(head, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   head.height = 22;
   r++;
 
   const detFirst = r;
   if (gastos.length === 0) {
-    ws.mergeCells(`A${r}:J${r}`);
+    ws.mergeCells(`A${r}:K${r}`);
     ws.getCell(`A${r}`).value = t.noExpenses;
     ws.getCell(`A${r}`).font = { italic: true, color: { argb: MUTED } };
     r++;
@@ -299,6 +299,7 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     const bob = Number(g.monto_bob);
     const usd = usdOf(g);
     const href = g.pdf_url ? `${origin}${g.pdf_url}` : g.drive_url;
+    const nMedia = g.media?.length ?? 0;
     row.values = [
       i + 1,
       toDate(g.fecha),
@@ -310,16 +311,19 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
       bob,
       usd,
       href ? { text: t.view, hyperlink: href } : t.none,
+      nMedia ? { text: t.files(nMedia), hyperlink: `${origin}${galeriaUrl(g.id)}` } : '—',
     ];
     row.getCell(2).numFmt = t.dateFmt;
     row.getCell(8).numFmt = MONEY;
     row.getCell(9).numFmt = MONEY;
-    styleBodyRow(row, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], i % 2 === 1);
+    styleBodyRow(row, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], i % 2 === 1);
     for (const c of [3, 4, 5, 6, 7]) row.getCell(c).alignment = { vertical: 'top', wrapText: true };
     row.getCell(1).alignment = { vertical: 'top', horizontal: 'center' };
     row.getCell(2).alignment = { vertical: 'top', horizontal: 'center' };
     row.getCell(10).alignment = { vertical: 'top', horizontal: 'center' };
     row.getCell(10).font = href ? { color: { argb: BLUE }, underline: true, size: 9 } : { color: { argb: 'FFB45309' }, size: 9 };
+    row.getCell(11).alignment = { vertical: 'top', horizontal: 'center' };
+    row.getCell(11).font = nMedia ? { color: { argb: BLUE }, underline: true, size: 9 } : { color: { argb: MUTED }, size: 9 };
     r++;
   });
   const detTotal = ws.getRow(r);
@@ -329,8 +333,8 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   detTotal.getCell(8).numFmt = MONEY;
   detTotal.getCell(9).value = { formula: `SUM(I${detFirst}:I${Math.max(detFirst, r - 1)})`, result: totalUsd };
   detTotal.getCell(9).numFmt = MONEY;
-  styleTotalRow(detTotal, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-  ws.autoFilter = { from: { row: detFirst - 1, column: 1 }, to: { row: Math.max(detFirst, r - 1), column: 10 } };
+  styleTotalRow(detTotal, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  ws.autoFilter = { from: { row: detFirst - 1, column: 1 }, to: { row: Math.max(detFirst, r - 1), column: 11 } };
   r += 3;
 
   // ── Carimbo de firma ───────────────────────────────────────
@@ -346,16 +350,16 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     font: { size: 9, italic: true, color: { argb: 'FF14283E' } },
     alignment: { vertical: 'middle', wrapText: true, indent: 1 },
   });
-  ws.mergeCells(`F${r}:J${r + boxRows - 2}`);
+  ws.mergeCells(`F${r}:K${r + boxRows - 2}`);
   ws.getCell(`F${r}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFBFCFE' } };
-  ws.mergeCells(`F${r + boxRows - 1}:J${r + boxRows - 1}`);
+  ws.mergeCells(`F${r + boxRows - 1}:K${r + boxRows - 1}`);
   Object.assign(ws.getCell(`F${r + boxRows - 1}`), {
     value: t.signHere,
     font: { size: 8, color: { argb: MUTED } },
     alignment: { vertical: 'middle', horizontal: 'center' },
   });
   for (let i = 0; i < boxRows; i++) ws.getRow(r + i).height = i === boxRows - 1 ? 16 : 20;
-  outline(boxTop, 6, boxTop + boxRows - 1, 10, thin);
+  outline(boxTop, 6, boxTop + boxRows - 1, 11, thin);
   // línea de firma
   for (let col = 7; col <= 9; col++) {
     const c = ws.getRow(boxTop + boxRows - 2).getCell(col);
@@ -374,7 +378,7 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   signRows.forEach(([label, value], i) => {
     const row = r + i;
     ws.mergeCells(`A${row}:C${row}`);
-    ws.mergeCells(`D${row}:J${row}`);
+    ws.mergeCells(`D${row}:K${row}`);
     Object.assign(ws.getCell(`A${row}`), {
       value: label,
       font: { bold: true, size: 9, color: { argb: MUTED } },
@@ -393,9 +397,9 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
 
   // Bordes del carimbo de firma
   for (let row = boxTop + boxRows; row <= signBottom; row++) {
-    for (let col = 1; col <= 10; col++) ws.getRow(row).getCell(col).border = allThin;
+    for (let col = 1; col <= 11; col++) ws.getRow(row).getCell(col).border = allThin;
   }
-  outline(signTop + 1, 1, signBottom, 10, medium);
+  outline(signTop + 1, 1, signBottom, 11, medium);
 
   const buf = await wb.xlsx.writeBuffer();
   return Buffer.from(buf);

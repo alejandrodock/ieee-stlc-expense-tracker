@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { FileText, AlertCircle, Trash2, Receipt, Download, HardDrive, Images, Film } from 'lucide-react';
 import CategoryIcon from '@/components/CategoryIcon';
+import ShareGalleryButton from '@/components/media/ShareGalleryButton';
 import {
   getCategoriaLabel, getTipoComprobanteLabel, formatMonto, formatDate, MAX_MEDIA,
 } from '@/lib/constants';
@@ -112,6 +113,7 @@ export default function GastosList({ gastos, onDelete, onEditMedia }: GastosList
                           {media.length > 0 ? `${media.length}/${MAX_MEDIA}` : 'Fotos'}
                         </button>
                       )}
+                      {media.length > 0 && <ShareGalleryButton gastoId={gasto.id} title={gasto.proveedor} />}
                       {pdf ? (
                         <>
                           <a
