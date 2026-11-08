@@ -27,9 +27,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icons/icon-192.svg", sizes: "any", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: "/icons/icon-192.svg",
+    apple: { url: "/icons/apple-touch-icon.png", sizes: "180x180" },
   },
 };
 
@@ -50,7 +52,6 @@ export default function RootLayout({
     <html lang="es" className={`${inter.variable} ${display.variable} h-full`}>
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
       </head>
       <body className="font-sans min-h-full flex flex-col antialiased">
         <ServiceWorkerRegistrar />

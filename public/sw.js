@@ -1,5 +1,5 @@
 // Bump on every deploy that changes caching behaviour; old caches are purged on activate.
-const CACHE_NAME = 'ieee-stlc-v2';
+const CACHE_NAME = 'ieee-stlc-v3';
 const OFFLINE_URLS = ['/'];
 
 self.addEventListener('install', (event) => {
