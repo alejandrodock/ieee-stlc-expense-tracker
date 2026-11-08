@@ -1,12 +1,16 @@
 export type Lang = 'es' | 'en';
 
 export const CATEGORIAS = [
-  { value: 'catering', label: 'Catering / Coffee Break', labelEn: 'Catering / Coffee Break', color: '#C9A45C' },
-  { value: 'transporte', label: 'Transporte Ponentes', labelEn: 'Speaker Transportation', color: '#5AA9D6' },
-  { value: 'imprenta', label: 'Imprenta y Kits', labelEn: 'Printing & Kits', color: '#9AA6D8' },
-  { value: 'hackathon', label: 'Premios / Hackathon', labelEn: 'Prizes / Hackathon', color: '#6BBFA5' },
-  { value: 'materiales', label: 'Materiales / Varios', labelEn: 'Materials / Miscellaneous', color: '#C98585' },
-  { value: 'operativos', label: 'Gastos operativos (taxis, pasajes)', labelEn: 'Operating Expenses (taxis, fares)', color: '#8FB0C4' },
+  // `value` es lo que se guarda en la base de datos: no cambiar los existentes.
+  { value: 'catering', label: 'Catering de coffee break', labelEn: 'Coffee break catering', color: '#C9A45C' },
+  { value: 'catering_hackathon', label: 'Catering de hackathon', labelEn: 'Hackathon catering', color: '#D4875F' },
+  { value: 'almuerzo_ponentes', label: 'Almuerzo de ponentes', labelEn: 'Speaker lunch', color: '#B58FC4' },
+  { value: 'transporte', label: 'Transporte de ponentes', labelEn: 'Speaker transportation', color: '#5AA9D6' },
+  { value: 'imprenta', label: 'Imprenta y papelería', labelEn: 'Printing and stationery', color: '#9AA6D8' },
+  { value: 'marketing', label: 'Marketing y difusión', labelEn: 'Marketing and outreach', color: '#D77FA1' },
+  { value: 'hackathon', label: 'Premios de hackathon', labelEn: 'Hackathon prizes', color: '#6BBFA5' },
+  { value: 'materiales', label: 'Materiales varios', labelEn: 'Miscellaneous materials', color: '#A3A86B' },
+  { value: 'operativos', label: 'Gastos operativos', labelEn: 'Operating expenses', color: '#8FB0C4' },
 ] as const;
 
 /** Todas las facturas y recibos se emiten a nombre del responsable de fondos. */

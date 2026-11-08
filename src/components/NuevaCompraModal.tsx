@@ -253,14 +253,14 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
 
               <div className="space-y-1.5">
                 <label htmlFor="proveedor" className="flex items-center gap-2 text-xs font-medium text-muted">
-                  <FileText className="w-3.5 h-3.5 text-faint" /> Proveedor / Empresa
+                  <FileText className="w-3.5 h-3.5 text-faint" /> Proveedor o empresa
                 </label>
                 <input id="proveedor" type="text" maxLength={200} value={proveedor} onChange={(e) => setProveedor(e.target.value)} placeholder={categoria === 'operativos' ? 'Ej: Taxi, Trufi, Minibús, Teleférico...' : 'Ej: Imprenta Gutenberg, Hipermaxi...'} className={inputCls} />
               </div>
 
               <div className="space-y-1.5">
                 <label htmlFor="descripcion" className="flex items-center justify-between text-xs font-medium text-muted">
-                  <span className="flex items-center gap-2"><ListChecks className="w-3.5 h-3.5 text-faint" /> Descripción / Elementos que contiene</span>
+                  <span className="flex items-center gap-2"><ListChecks className="w-3.5 h-3.5 text-faint" /> Descripción de los elementos</span>
                   <span className="text-[10px] text-faint">Múltiples items</span>
                 </label>
                 <textarea id="descripcion" rows={2} maxLength={2000} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej: 3 cajas de café, 200 vasos térmicos, azúcar y servilletas..." className={`${inputCls} resize-none py-2`} />

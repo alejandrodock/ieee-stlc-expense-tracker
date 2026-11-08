@@ -1,10 +1,16 @@
-import { Coffee, Car, Printer, Trophy, Package, Receipt, CarTaxiFront, type LucideIcon } from 'lucide-react';
+import {
+  Coffee, Car, Printer, Trophy, Package, Receipt, CarTaxiFront, Pizza, UtensilsCrossed, Megaphone,
+  type LucideIcon,
+} from 'lucide-react';
 import { getCategoriaColor } from '@/lib/constants';
 
 const ICONS: Record<string, LucideIcon> = {
   catering: Coffee,
+  catering_hackathon: Pizza,
+  almuerzo_ponentes: UtensilsCrossed,
   transporte: Car,
   imprenta: Printer,
+  marketing: Megaphone,
   hackathon: Trophy,
   materiales: Package,
   operativos: CarTaxiFront,

@@ -130,7 +130,7 @@ function drawDetails(page: PDFPage, f: Fonts, meta: ComprobanteMeta, clean: (s: 
 
   const leftRows: [string, string][] = [
     ['FECHA', meta.fecha],
-    ['PROVEEDOR / EMPRESA', meta.proveedor],
+    ['PROVEEDOR O EMPRESA', meta.proveedor],
     ['CATEGORÍA', meta.categoria],
     ['TIPO DE COMPROBANTE', meta.tipoComprobante],
   ];
@@ -146,7 +146,7 @@ function drawDetails(page: PDFPage, f: Fonts, meta: ComprobanteMeta, clean: (s: 
   for (const [label, lines] of leftWrapped) {
     page.drawText(label, { x: M + pad, y: y - labelSize, size: labelSize, font: f.bold, color: C.slate500 });
     y -= labelSize + 4;
-    y -= drawLines(page, lines, M + pad, y, label === 'PROVEEDOR / EMPRESA' ? f.bold : f.regular, valueSize, C.slate800);
+    y -= drawLines(page, lines, M + pad, y, label === 'PROVEEDOR O EMPRESA' ? f.bold : f.regular, valueSize, C.slate800);
     y -= 7;
   }
 
@@ -182,7 +182,7 @@ function drawDetails(page: PDFPage, f: Fonts, meta: ComprobanteMeta, clean: (s: 
     drawLines(page, lines, M + pad, y - pad - labelSize - 3, f.regular, 9, textColor);
     y -= h + 8;
   };
-  if (meta.descripcion?.trim()) block('DESCRIPCIÓN / ITEMS', meta.descripcion.trim(), rgb(241 / 255, 245 / 255, 249 / 255), C.slate500, C.slate800);
+  if (meta.descripcion?.trim()) block('DESCRIPCIÓN DE LOS ELEMENTOS', meta.descripcion.trim(), rgb(241 / 255, 245 / 255, 249 / 255), C.slate500, C.slate800);
   if (meta.observaciones?.trim()) block('OBSERVACIONES', meta.observaciones.trim(), C.amberBg, C.amberLabel, C.amberText);
   return y;
 }

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS gastos (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   fecha DATE NOT NULL,
-  categoria TEXT NOT NULL CHECK (categoria IN ('catering', 'transporte', 'imprenta', 'hackathon', 'materiales', 'operativos')),
+  categoria TEXT NOT NULL, -- valores válidos: CATEGORIAS en src/lib/constants.ts
   proveedor TEXT NOT NULL,
   descripcion TEXT,
   observaciones TEXT,
@@ -30,7 +30,6 @@ ALTER TABLE gastos ADD COLUMN IF NOT EXISTS observaciones TEXT;
 ALTER TABLE gastos DROP CONSTRAINT IF EXISTS gastos_tipo_comprobante_check;
 ALTER TABLE gastos ADD CONSTRAINT gastos_tipo_comprobante_check CHECK (tipo_comprobante IN ('factura', 'factura_ieee', 'factura_personal', 'recibo', 'sin_comprobante'));
 ALTER TABLE gastos DROP CONSTRAINT IF EXISTS gastos_categoria_check;
-ALTER TABLE gastos ADD CONSTRAINT gastos_categoria_check CHECK (categoria IN ('catering', 'transporte', 'imprenta', 'hackathon', 'materiales', 'operativos'));
 
 -- Create indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_gastos_fecha ON gastos(fecha DESC);
