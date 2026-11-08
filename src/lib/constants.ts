@@ -1,37 +1,57 @@
+export type Lang = 'es' | 'en';
+
 export const CATEGORIAS = [
-  { value: 'catering', label: 'Catering / Coffee Break', color: '#C9A45C' },
-  { value: 'transporte', label: 'Transporte Ponentes', color: '#5AA9D6' },
-  { value: 'imprenta', label: 'Imprenta y Kits', color: '#9AA6D8' },
-  { value: 'hackathon', label: 'Premios / Hackathon', color: '#6BBFA5' },
-  { value: 'materiales', label: 'Materiales / Varios', color: '#C98585' },
-  { value: 'operativos', label: 'Gastos operativos (taxis, pasajes)', color: '#8FB0C4' },
+  { value: 'catering', label: 'Catering / Coffee Break', labelEn: 'Catering / Coffee Break', color: '#C9A45C' },
+  { value: 'transporte', label: 'Transporte Ponentes', labelEn: 'Speaker Transportation', color: '#5AA9D6' },
+  { value: 'imprenta', label: 'Imprenta y Kits', labelEn: 'Printing & Kits', color: '#9AA6D8' },
+  { value: 'hackathon', label: 'Premios / Hackathon', labelEn: 'Prizes / Hackathon', color: '#6BBFA5' },
+  { value: 'materiales', label: 'Materiales / Varios', labelEn: 'Materials / Miscellaneous', color: '#C98585' },
+  { value: 'operativos', label: 'Gastos operativos (taxis, pasajes)', labelEn: 'Operating Expenses (taxis, fares)', color: '#8FB0C4' },
 ] as const;
 
 /** Todas las facturas y recibos se emiten a nombre del responsable de fondos. */
-export const RESPONSABLE = 'Ivan Mendoza';
+export const RESPONSABLE = 'Ivan Alejandro Mendoza';
+
+/** Datos del responsable de fondos (carimbo del reporte de rendición). */
+export const RESPONSABLE_PERFIL = {
+  nombre: RESPONSABLE,
+  cargo: 'Conference Chair – IEEE Student Tech Leadership Conference, Universidad Mayor de San Andrés, 2026',
+  ci: '14229290',
+  membresiaIeee: '99693391',
+  correo: 'iamendoza@ieee.org',
+  celular: '+591 68108299',
+} as const;
 
 export const TIPOS_COMPROBANTE = [
-  { value: 'factura_personal', label: `Factura (C.I. ${RESPONSABLE})` },
-  { value: 'recibo', label: `Recibo (a nombre de ${RESPONSABLE})` },
-  { value: 'sin_comprobante', label: 'Sin factura ni recibo (gasto menor)' },
+  { value: 'factura_personal', label: `Factura (C.I. ${RESPONSABLE})`, labelEn: `Invoice (ID ${RESPONSABLE})` },
+  { value: 'recibo', label: `Recibo (a nombre de ${RESPONSABLE})`, labelEn: `Receipt (issued to ${RESPONSABLE})` },
+  { value: 'sin_comprobante', label: 'Sin factura ni recibo (gasto menor)', labelEn: 'No invoice or receipt (minor expense)' },
 ] as const;
-
-export const PRESUPUESTO_INICIAL = 13618.08; // BOB
 
 /** Bolivianos por dólar usados para el equivalente en USD de la rendición. */
 export const TIPO_CAMBIO_USD = 11.58;
 
+/** Monto total asignado al evento, en dólares. */
+export const MONTO_ASIGNADO_USD = 1176;
+
+/** Presupuesto en bolivianos: 1176 USD × 11,58 = 13.618,08 Bs. */
+export const PRESUPUESTO_INICIAL = Math.round(MONTO_ASIGNADO_USD * TIPO_CAMBIO_USD * 100) / 100;
+
 export type CategoriaValue = typeof CATEGORIAS[number]['value'];
 export type TipoComprobanteValue = typeof TIPOS_COMPROBANTE[number]['value'] | 'factura';
 
-export function getTipoComprobanteLabel(value: string): string {
+export function getTipoComprobanteLabel(value: string, lang: Lang = 'es'): string {
   // Registros antiguos ('factura', 'factura_ieee') también se emitieron a nombre del responsable.
-  if (value === 'factura' || value === 'factura_ieee') return `Factura (C.I. ${RESPONSABLE})`;
-  return TIPOS_COMPROBANTE.find((t) => t.value === value)?.label ?? value;
+  const v = value === 'factura' || value === 'factura_ieee' ? 'factura_personal' : value;
+  const t = TIPOS_COMPROBANTE.find((x) => x.value === v);
+  if (!t) return value;
+  return lang === 'en' ? t.labelEn : t.label;
 }
 
-export function getCategoriaLabel(value: string): string {
-  return CATEGORIAS.find(c => c.value === value)?.label ?? value;
+export function getCategoriaLabel(value: string, lang: Lang = 'es'): string {
+  const c = CATEGORIAS.find((x) => x.value === value);
+  if (!c) return value;
+  return lang === 'en' ? c.labelEn : c.label;
 }
 
 export function getCategoriaColor(value: string): string {

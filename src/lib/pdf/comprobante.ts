@@ -6,7 +6,7 @@
  *                        of the original digital receipt, untouched.
  */
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from 'pdf-lib';
-import { RESPONSABLE } from '../constants';
+import { RESPONSABLE, RESPONSABLE_PERFIL } from '../constants';
 
 export type ComprobanteMeta = {
   referencia: string; // file name used as audit reference
@@ -85,7 +85,7 @@ function drawLines(page: PDFPage, lines: string[], x: number, yTop: number, font
   return lines.length * lineH;
 }
 
-const EVENT_TITLE = 'IEEE ComSoc Student Tech Leadership Conference';
+const EVENT_TITLE = 'IEEE Student Tech Leadership Conference';
 const EVENT_SUBTITLE = 'Universidad Mayor de San Andrés · 2026';
 
 /** Header band; returns the y coordinate just below it. */
@@ -252,7 +252,7 @@ export async function buildDeclaracionPdf(meta: ComprobanteMeta): Promise<Uint8A
   y -= 11 + 12;
 
   const texto =
-    `Yo, ${RESPONSABLE}, responsable de los fondos del evento ${EVENT_TITLE} (${EVENT_SUBTITLE}), ` +
+    `Yo, ${RESPONSABLE}, con C.I. ${RESPONSABLE_PERFIL.ci}, responsable de los fondos del evento ${EVENT_TITLE} (${EVENT_SUBTITLE}), ` +
     `declaro que el gasto detallado en este documento por Bs. ${meta.montoBob} fue realizado el ${meta.fecha} ` +
     `exclusivamente para actividades del evento, y que no cuenta con factura ni recibo por tratarse de un gasto menor ` +
     `(transporte en taxi, trufi, minibús u otro similar) para el cual el proveedor no emite comprobante.`;
@@ -262,7 +262,7 @@ export async function buildDeclaracionPdf(meta: ComprobanteMeta): Promise<Uint8A
   const lineW = 220;
   page.drawLine({ start: { x: M, y }, end: { x: M + lineW, y }, thickness: 0.8, color: C.slate500 });
   page.drawText(clean(RESPONSABLE), { x: M, y: y - 13, size: 9.5, font: f.bold, color: C.slate800 });
-  page.drawText(clean('Responsable de fondos · C.I.: ____________________'), { x: M, y: y - 26, size: 8.5, font: f.regular, color: C.slate500 });
+  page.drawText(clean(`Responsable de fondos · C.I.: ${RESPONSABLE_PERFIL.ci}`), { x: M, y: y - 26, size: 8.5, font: f.regular, color: C.slate500 });
   page.drawText(clean(`Lugar y fecha: La Paz, ${meta.fecha}`), { x: M, y: y - 39, size: 8.5, font: f.regular, color: C.slate500 });
 
   drawFooters(doc, f, meta, clean, 0, 1);

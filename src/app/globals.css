@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* === IEEE STLC · Sistema de diseño ===
-   Paleta sobria basada en el azul IEEE / ComSoc sobre marino profundo. */
+   Paleta sobria basada en el azul IEEE sobre marino profundo. */
 
 @theme {
   --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
