@@ -1,88 +1,91 @@
-# 🧾 IEEE STLC ExpenseTracker
+# IEEE STLC & HART 2026 — workspace
 
-> **PWA Mobile-First** para automatizar la gestión de compras, digitalización de facturas/recibos y rendición de fondos en bolivianos (BOB) y dólares (USD) para IEEE STLC 2026.
+Dos módulos aislados bajo **un único proceso Next.js y un único dominio**.
 
-![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?style=flat-square&logo=tailwindcss)
-![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=flat-square&logo=supabase)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript)
-
-## ✨ Funcionalidades
-
-- 📊 **Dashboard en tiempo real** — Saldo restante, total gastado, desglose por categorías
-- 📝 **Registro de compras** — Formulario de 3 pasos con calculadora de saldo y equivalente USD (T.C. 11,58)
-- 📸 **Escáner tipo CamScanner (en el celular)** — Detección automática de bordes, ajuste manual de esquinas con lupa, corrección de perspectiva, giro y filtros *Color nítido* / *Grises* / *Original*. El filtro por defecto elimina sombras, deja el papel blanco y resalta la letra sin aspecto de fotocopia
-- 📎 **Recibos digitales en PDF** — Se adjuntan tal cual, con una portada de rendición al inicio
-- 📄 **PDF de auditoría** — Encabezado IEEE, datos del gasto y comprobante; nombre `YYYYMMDD_Categoria_Proveedor_MontoBOB.pdf`
-- 🔒 **Almacenamiento privado** — PDFs en Supabase Storage (bucket privado `comprobantes`), servidos con URLs firmadas de corta duración
-- 📈 **Exportación Excel** — Rendición con totales por categoría y enlaces a cada comprobante
-- 📱 **PWA Mobile-First** — Instalable como app
-
-## 🏗️ Arquitectura
-
-```
-src/
-├── app/api/
-│   ├── gastos/               # GET (liviano) · POST (validado) · DELETE (+ borra comprobante)
-│   ├── comprobantes/         # POST: URL firmada de subida directa a Storage
-│   ├── comprobantes/[id]/    # GET: redirige a una URL firmada del PDF
-│   └── export/               # Excel (.xlsx)
-├── components/
-│   ├── scanner/              # DocumentScanner + CornerEditor (UI del escáner)
-│   └── …                     # Dashboard, NuevaCompraModal, GastosList, …
-└── lib/
-    ├── scanner/core.ts       # Detección (Hough), perspectiva y realce — sin dependencias
-    ├── scanner/*.worker.ts   # Procesamiento en Web Worker (UI fluida en el celular)
-    ├── pdf/comprobante.ts    # Generación de PDF con pdf-lib
-    └── server/               # Supabase (service role), Storage, validación, Drive opcional
-supabase/
-├── schema.sql                # Esquema completo (instalación nueva)
-└── migrations/               # Cambios incrementales (ejecutar en SQL Editor)
+```text
+fullstack/
+├── auto-registro-fondos-ieee/  # Host Next.js 15 + módulo STLC existente
+│   ├── src/app/               # Hub, /stlc, /hart y adaptadores de las API
+│   └── supabase/migrations/20261113_add_multi_project_support.sql
+├── hart-registro-fondos-ieee/  # UI, reglas, PDF, Excel y API del módulo HART
+├── tests/                     # Pruebas de conversión, umbral, PDF y Excel
+├── package.json               # npm workspaces y comandos unificados
+└── package-lock.json          # Dependencias del workspace completo
 ```
 
-**Flujo de un gasto:** foto → escaneo en el navegador → PDF (pdf-lib) → subida directa a Supabase Storage con URL firmada (no pasa por la función serverless, evitando el límite de 4,5 MB de Vercel) → registro en la tabla `gastos`.
+HART es un paquete fuente del workspace, no otro servidor ni otro despliegue. El host importa sus componentes y handlers mediante `@hart/*`. No requiere Turborepo, proxy remoto ni rewrites a un segundo dominio.
 
-## 🚀 Configuración
+## Puesta en marcha
 
-1. `npm install`
-2. En Supabase > SQL Editor ejecutar `supabase/schema.sql` (proyecto nuevo) o los archivos de `supabase/migrations/` (proyecto existente).
-3. Crear `.env.local` a partir de `.env.example`.
-4. `npm run dev` y abrir http://localhost:3000
+Requiere Node 22.18+ y npm. Desde esta carpeta:
 
-El bucket privado `comprobantes` se crea automáticamente en la primera subida.
+```sh
+npm ci
+npm run dev
+npm run typecheck
+npm test
+npm run build
+npm run test:e2e
+npm start
+```
 
-### Copia opcional en Google Drive
+En PowerShell con scripts deshabilitados, usar `npm.cmd`. Las variables siguen en `auto-registro-fondos-ieee/.env.local`; el ejemplo está en esa carpeta. No copiar credenciales al repositorio ni al paquete HART.
 
-Si se define `GOOGLE_DRIVE_FOLDER_ID` (más las credenciales de la service account), cada PDF se copia a Drive en segundo plano. **La carpeta debe estar en una Unidad compartida (Google Workspace)** donde la service account sea miembro: una service account no tiene cuota propia y no puede subir a carpetas de “Mi unidad” de una cuenta Gmail.
+Las pruebas unitarias ejecutan una migración real en PostgreSQL embebido (PGlite), preservan una fila STLC de ejemplo y validan PDF/Excel. Las pruebas de navegador requieren Chromium (`npx playwright install chromium`, o `PLAYWRIGHT_CHROMIUM_EXECUTABLE` para usar uno ya instalado) y un build previo. Lanzan la app en el puerto 3100 con una API de almacenamiento/base de datos local en 54399. No escriben en Supabase real. `SUPABASE_URL` permite fijar una URL exclusivamente del servidor durante esas pruebas; en producción se usa normalmente `NEXT_PUBLIC_SUPABASE_URL` como antes.
 
-## ☁️ Despliegue
+Variables obligatorias: `NEXT_PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`. Las opciones existentes de Google Drive y firma STLC se conservan. `HART_BUDGET_USD` es opcional: su valor predeterminado es **9000**. HART captura una firma por declaración; no reutiliza automáticamente la firma de STLC. ExchangeRate-API no necesita clave en el endpoint elegido.
 
-El proyecto de Vercel está conectado a este repositorio: cada `git push` a `main` despliega a producción. Variables de entorno necesarias en Vercel: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (y las de Drive si se usa la copia opcional).
+## Migración y compatibilidad
 
-## 📋 Categorías de Presupuesto
+**Ejecutar primero** `auto-registro-fondos-ieee/supabase/migrations/20261113_add_multi_project_support.sql` en Supabase SQL Editor, antes de desplegar el nuevo código. Para una instalación vacía, ejecutar primero el `schema.sql` existente y después esta migración. El script se puede repetir.
 
-| Categoría | Ícono | Color |
-|-----------|-------|-------|
-| Catering / Coffee Break | ☕ | Amber |
-| Transporte Ponentes | 🚗 | Blue |
-| Imprenta y Kits | 🖨️ | Purple |
-| Premios / Hackathon | 🏆 | Emerald |
-| Materiales / Varios | 📦 | Red |
+- Se conserva la tabla real `gastos`; no existe una tabla `expenses` en este proyecto.
+- `project_id TEXT NOT NULL DEFAULT 'STLC'` asigna los registros anteriores a STLC sin cambiar importes, fechas, categorías, comprobantes ni evidencias.
+- Los campos adicionales de moneda se usan en HART. Los valores históricos de `monto_bob` y `monto_usd` de STLC permanecen intactos.
+- HART guarda `original_amount`, `original_currency`, `exchange_rate` (USD por unidad de moneda), `amount_usd`, `has_receipt`, nombre del firmante y origen/fecha de la tasa. No se inventa un equivalente en BOB para compras HART en EUR/USD.
+- Las tablas mantienen RLS y se revocan permisos directos de `anon`/`authenticated`. El servidor usa `service_role`, que omite RLS: por ello todas las operaciones se restringen también explícitamente por proyecto. No se agrega una política pública que confíe en LocalStorage.
+- La vista antigua `resumen_categorias` sigue resumiendo exclusivamente STLC.
+- STLC conserva su presupuesto de **1176 USD / 13618,08 BOB**, cambio **11,58**, nueve categorías, formulario, escáner, PDF, Excel, Drive, borradores y enlaces anteriores. Los cambios mínimos en STLC son navegación, filtro de proyecto, configuración del workspace y PWA.
 
-## 🔧 Stack Tecnológico
+El selector **no es autenticación**. Se conserva el modelo de acceso existente, sin cuentas ni roles nuevos. Si el despliegue tiene protección de acceso externa, conservarla.
 
-| Tecnología | Uso |
-|-----------|-----|
-| **Next.js 15.5** | Framework full-stack |
-| **Tailwind CSS 4** | Diseño UI |
-| **Supabase** | Base de datos PostgreSQL |
-| **Canvas + Web Worker** | Escáner de documentos (sin dependencias) |
-| **pdf-lib** | Generación y unión de PDFs |
-| **Supabase Storage** | Comprobantes PDF (bucket privado) |
-| **SheetJS (xlsx)** | Exportación Excel |
-| **Framer Motion** | Animaciones |
-| **Lucide React** | Íconos |
+## Rutas y almacenamiento
 
-## 📄 Licencia
+| Ruta | Función |
+|---|---|
+| `/` | Selector de proyectos, recuerda el último utilizado |
+| `/stlc` | Dashboard STLC existente |
+| `/hart` | Dashboard HART con presupuesto y totales USD |
+| `/api/gastos`, `/api/export` | Operaciones y Excel exclusivamente STLC |
+| `/api/comprobantes/*`, `/api/media/*`, `/galeria/*` | Enlaces STLC existentes |
+| `/api/hart/gastos` | Listar, registrar y eliminar gastos HART |
+| `/api/hart/comprobantes` | Preparar subida directa de factura o recibo |
+| `/api/hart/comprobantes/[id]` | Abrir/descargar PDF HART mediante URL firmada |
+| `/api/hart/rates?currency=EUR` | Consultar tasa a USD; también BOB y USD |
+| `/api/hart/export` | Excel HART, con resumen y detalle separados |
 
-MIT — IEEE Sección Bolivia / STLC 2026
+Los archivos históricos siguen en `comprobantes` y `evidencias`. HART usa el bucket privado separado `hart-comprobantes`. Sus recibos se suben directamente a Storage; el servidor valida el PDF/JPG/PNG y genera el documento final. Se admiten recibos de hasta 20 MB; no se admiten PDF cifrados. El original se conserva dentro del PDF final y la copia temporal se retira después del registro. Subidas abandonadas pueden dejar archivos temporales `original`; una limpieza administrativa debe limitarse a IDs sin registro y cargas ya vencidas.
+
+## HART: monedas y declaraciones
+
+Las ocho categorías cubren vuelos, alojamiento, transporte, alimentación, inscripción IEEE/ISICAS, materiales/prototipo, seguros/visados y gastos menores. El total es `round(original_amount × exchange_rate, 2)` y lo recalcula el servidor. El reporte usa el total guardado, no una cotización posterior.
+
+La API gratuita [ExchangeRate-API](https://www.exchangerate-api.com/docs/free) actualiza diariamente, no en tiempo real intradía. Se muestra la fecha de la cotización y la atribución exigida. La tasa es editable y queda marcada como manual al modificarla. Sin proveedor se ofrece la última tasa guardada, con fecha y aviso para revisarla, o se solicita una tasa manual. Las tasas actuales no constituyen tasas históricas del día de la compra.
+
+La regla de este módulo es **estrictamente menor de 25,00 USD** para gastos sin recibo. Desde 25,00 USD se exige un archivo válido antes de guardar. El límite se aplica al total redondeado a centavos. Sin recibo se requieren descripción, nombre completo y firma manuscrita en Canvas; el servidor genera la declaración y almacena el PDF antes de insertar el gasto. La firma es una imagen manuscrita, no una firma criptográfica certificada.
+
+La [guía pública IEEE](https://mga.ieee.org/images/files/TE_Guidelines_08.2022_volunteers_only_FINAL_08.26.22.pdf) describe documentación para gastos que exceden 25 USD. Por petición del proyecto se implementa el criterio más estricto `>= 25`. El documento generado no implica aprobación de reembolso ni sustituye la presentación oficial que corresponda.
+
+## PWA y persistencia
+
+El manifiesto abre el hub. El último proyecto se guarda en `ieee:active-project`; los borradores HART usan una clave separada de STLC. Cambiar de módulo conserva los datos del formulario, pero los archivos y firmas se vuelven a adjuntar después de recargar. El service worker renueva su caché y excluye API, galerías y respuestas RSC. Guardar gastos y consultar datos requiere conexión; no hay cola de sincronización de gastos offline.
+
+## Un solo despliegue Vercel
+
+1. El checkout del repositorio conectado debe contener **ambas carpetas y los archivos raíz**. La carpeta padre actual no era un repositorio Git y STLC tiene un `.git` propio: hacer push solo desde STLC **no incluye** el módulo hermano. No se movió ni eliminó ese historial. Para publicar el monorepo, integrar ambos módulos en el repositorio elegido conservando el historial de STLC, o preparar un nuevo repositorio raíz; no agregar STLC como un submódulo vacío por accidente.
+2. Reutilizar el **mismo proyecto Vercel y dominio**, configurando Root Directory en `auto-registro-fondos-ieee` y habilitando la inclusión de archivos fuera de ese directorio raíz.
+3. Install Command: `cd .. && npm ci`; Build Command: `npm run build`; Framework: Next.js. `outputFileTracingRoot` incluye la carpeta padre para incorporar HART en las funciones.
+4. Conservar las variables Supabase y Drive existentes; añadir opcionalmente `HART_BUDGET_USD=9000`.
+5. Aplicar la migración, desplegar una vista previa, verificar ambos módulos y promover el mismo proyecto de Vercel.
+
+El rollback de código a STLC anterior es compatible con la migración aditiva y con la vista STLC filtrada. La migración debe aplicarse antes de promover el despliegue multi-proyecto.
