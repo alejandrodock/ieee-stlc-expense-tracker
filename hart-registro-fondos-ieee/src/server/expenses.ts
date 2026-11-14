@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     }
     let pdf;
     try { pdf = await buildHartPdf(expense, receipt); }
-    catch { return NextResponse.json({ error: 'No se pudo validar el comprobante o la firma. Usa un PDF sin contraseña o una imagen JPG/PNG válida.' }, { status: 400 }); }
+    catch { return NextResponse.json({ error: 'No se pudo validar el comprobante o la firma. Usa un PDF o una imagen JPG/PNG válida.' }, { status: 400 }); }
     await ensureBucket(client);
     const uploaded = await client.storage.from(HART_BUCKET).upload(reportPath(expense.id), pdf, { contentType: 'application/pdf', upsert: false });
     if (uploaded.error) throw uploaded.error;

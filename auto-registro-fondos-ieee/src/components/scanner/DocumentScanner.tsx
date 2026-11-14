@@ -66,6 +66,7 @@ export default function DocumentScanner({ file, onScanChange }: DocumentScannerP
     })();
     return () => {
       cancelled = true;
+      runRef.current = runRef.current + 1;
       client.dispose();
       clientRef.current = null;
     };
@@ -77,6 +78,7 @@ export default function DocumentScanner({ file, onScanChange }: DocumentScannerP
     const client = clientRef.current;
     if (!client) return;
     const token = ++runRef.current;
+    onScanChange(null);
     setPhase('processing');
     try {
       const image = await client.process(q, m, rot);

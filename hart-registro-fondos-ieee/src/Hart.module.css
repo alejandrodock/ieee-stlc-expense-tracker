@@ -28,4 +28,12 @@
 .link { color: #8cdccb; font-size: 13px; text-decoration: underline; }
 .category { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; font-size: 13px; }
 .fieldset { border: 0; padding: 0; min-width: 0; }
+.receipt { display: grid; gap: 14px; margin: 18px 0; min-width: 0; }
+.receiptOptions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.receiptOption { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 20px 8px; border: 1px dashed #47796e; border-radius: 12px; background: #112b31; cursor: pointer; }
+.receiptOption:hover { border-color: #86dac6; background: #193b40; }
+.receiptOption strong { color: #a8ecd9; font-size: 14px; }
+.receiptOption span { color: #a0b1c4; font-size: 11px; }
+.receiptOption:focus-visible { outline: 2px solid #86dac6; outline-offset: 2px; }
+.filename { display: block; overflow-wrap: anywhere; }
 @media (max-width: 520px) { .page { padding: 22px 14px 60px; } .budget { grid-template-columns: 1fr; gap: 14px; } .metric { font-size: 28px; } .grid { grid-template-columns: 1fr; gap: 0; } .card { padding: 18px; } .title { font-size: 33px; } }

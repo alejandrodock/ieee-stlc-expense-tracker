@@ -58,8 +58,11 @@ export async function buildHartPdf(expense: ExpenseInput & { amount_usd: number 
   } else {
     if (!receipt?.bytes.length) throw new Error('Falta el comprobante.');
     if (receipt.mime === 'application/pdf') {
-      const original = await PDFDocument.load(receipt.bytes);
+      const original = await PDFDocument.load(receipt.bytes, { ignoreEncryption: true });
       if (!original.getPageCount()) throw new Error('PDF sin páginas.');
+      // Preserve protected receipts verbatim, like STLC. The currency and rate
+      // still remain in the expense record and Excel export.
+      if (original.isEncrypted) return receipt.bytes;
       for (const p of await doc.copyPages(original, original.getPageIndices())) doc.addPage(p);
     } else {
       const img = receipt.mime === 'image/png' ? await doc.embedPng(receipt.bytes) : await doc.embedJpg(receipt.bytes);

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { CATEGORIES, CURRENCIES, convertedUsd, money, validateExpense, type Currency, type ExpenseInput } from './domain';
 import Signature from './Signature';
+import ReceiptPicker from './ReceiptPicker';
 import styles from './Hart.module.css';
 
 const DRAFT = 'ieee:HART:draft:v1';
@@ -122,22 +123,16 @@ export default function ExpenseForm({ onSaved, onClose }: { onSaved: () => void;
       {rateNote && <p className={styles.notice}>{rateNote}</p>}
       <p className={styles.muted}><a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer" className={styles.link}>Tasas de ExchangeRate-API</a> · Actualización diaria.</p>
       <p className={styles.metric} aria-live="polite">Total: {validTotal ? money(total) : '—'}</p>
-      <label className={styles.checkbox}><input type="checkbox" checked={f.has_receipt} onChange={e => { update('has_receipt', e.target.checked); setSignature(''); }} />Tengo factura o recibo oficial</label>
+      <label className={styles.checkbox}><input type="checkbox" checked={f.has_receipt} onChange={e => { update('has_receipt', e.target.checked); setSignature(''); setFile(null); }} />Tengo factura o recibo oficial</label>
       {!f.has_receipt && needsReceipt && <p role="alert" className={styles.error}>Desde 25,00 USD debes adjuntar una factura o recibo para finalizar.</p>}
-      {f.has_receipt ? <label className={styles.field}>Factura o recibo (PDF, JPG o PNG; máximo 20 MB)
-        <input className={styles.input} type="file" accept="application/pdf,image/jpeg,image/png" required onChange={e => {
-          const selected = e.target.files?.[0] ?? null;
-          if (selected && (selected.size > 20 * 1024 * 1024 || !['application/pdf', 'image/jpeg', 'image/png'].includes(selected.type))) { setError('Usa un PDF, JPG o PNG de hasta 20 MB.'); e.target.value = ''; setFile(null); }
-          else { setFile(selected); setError(''); }
-        }} />
-      </label> : <>
+      {f.has_receipt ? <ReceiptPicker onChange={setFile} /> : <>
         <p className={styles.notice}>Para gastos inferiores a 25,00 USD se generará una declaración jurada. Al firmar declaras que este gasto corresponde a HART 2026, que no tienes comprobante y que los datos son correctos.</p>
         <label className={styles.field}>Nombre completo del declarante<input className={styles.input} required maxLength={200} value={f.signer_name} onChange={e => update('signer_name', e.target.value)} /></label>
         <Signature onChange={setSignature} />
       </>}
       <p className={styles.muted} style={{ margin: '18px 0' }}>Los datos se guardan como borrador en este dispositivo. Después de recargar, vuelve a adjuntar el archivo o dibujar la firma. Para finalizar necesitas conexión.</p>
       {error && <p role="alert" className={styles.error}>{error}</p>}
-      <button className={styles.button} type="submit" disabled={busy || rateLoading || (!f.has_receipt && (needsReceipt || !signature))}>{busy ? status : 'Guardar gasto'}</button>
+      <button className={styles.button} type="submit" disabled={busy || rateLoading || (f.has_receipt && !file) || (!f.has_receipt && (needsReceipt || !signature))}>{busy ? status : 'Guardar gasto'}</button>
       {status && <p role="status" className={styles.muted}>{status}</p>}
     </fieldset>
   </form>;

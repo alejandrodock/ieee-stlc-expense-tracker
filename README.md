@@ -3,7 +3,7 @@
 Dos módulos aislados bajo **un único proceso Next.js y un único dominio**.
 
 ```text
-fullstack/
+fullstack/ieee-fondos/
 ├── auto-registro-fondos-ieee/  # Host Next.js 15 + módulo STLC existente
 │   ├── src/app/               # Hub, /stlc, /hart y adaptadores de las API
 │   └── supabase/migrations/20261113_add_multi_project_support.sql
@@ -14,6 +14,12 @@ fullstack/
 ```
 
 HART es un paquete fuente del workspace, no otro servidor ni otro despliegue. El host importa sus componentes y handlers mediante `@hart/*`. No requiere Turborepo, proxy remoto ni rewrites a un segundo dominio.
+
+## Ubicación y límites del proyecto
+
+`fullstack/` contiene proyectos independientes; `ieee-fondos/` contiene exclusivamente esta plataforma. Sus dependencias, pruebas, scripts y herramientas locales de despliegue se mantienen aquí. Los proyectos futuros deben ser carpetas hermanas de `ieee-fondos`, con su propio repositorio y configuración.
+
+La raíz publicada en GitHub corresponde al contenido de `ieee-fondos/`; no incluye el contenedor local `fullstack/`. Vercel conserva `auto-registro-fondos-ieee` como Root Directory y ambos módulos siguen en la misma URL. `.deployment/` es material local ignorado por Git; `scripts/prepare-release.ps1` prepara el checkout de publicación sin copiar secretos.
 
 ## Puesta en marcha
 
@@ -64,7 +70,9 @@ El selector **no es autenticación**. Se conserva el modelo de acceso existente,
 | `/api/hart/rates?currency=EUR` | Consultar tasa a USD; también BOB y USD |
 | `/api/hart/export` | Excel HART, con resumen y detalle separados |
 
-Los archivos históricos siguen en `comprobantes` y `evidencias`. HART usa el bucket privado separado `hart-comprobantes`. Sus recibos se suben directamente a Storage; el servidor valida el PDF/JPG/PNG y genera el documento final. Se admiten recibos de hasta 20 MB; no se admiten PDF cifrados. El original se conserva dentro del PDF final y la copia temporal se retira después del registro. Subidas abandonadas pueden dejar archivos temporales `original`; una limpieza administrativa debe limitarse a IDs sin registro y cargas ya vencidas.
+Los archivos históricos siguen en `comprobantes` y `evidencias`. HART usa el bucket privado separado `hart-comprobantes`. Sus recibos se suben directamente a Storage; el servidor valida el PDF/JPG/PNG y genera el documento final. Se admiten recibos de hasta 20 MB. Los PDF protegidos se conservan tal cual, sin agregar portada, igual que en STLC; los PDF legibles conservan sus páginas originales después de la portada HART. La copia temporal se retira después del registro. Subidas abandonadas pueden dejar archivos temporales `original`; una limpieza administrativa debe limitarse a IDs sin registro y cargas ya vencidas.
+
+HART reutiliza directamente `InAppCamera`, `DocumentScanner`, `CornerEditor` y el Web Worker de STLC. Su selector ofrece **Escanear / Imagen / PDF**, con cámara interna, repetición y confirmación de foto, cámara nativa como alternativa, detección y ajuste de esquinas, perspectiva, filtros y giro. Las imágenes de la galería pasan por el mismo escáner y se convierten a JPEG antes de subir; HEIC/HEIF dependen del soporte del navegador, igual que en STLC. El botón Guardar espera a que termine el procesamiento y la portada se genera con los datos financieros propios de HART.
 
 ## HART: monedas y declaraciones
 

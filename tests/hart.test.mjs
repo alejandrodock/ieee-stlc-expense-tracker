@@ -64,3 +64,12 @@ test('Excel preserves original currency, rate, USD total and project-scoped rece
   assert.match(ws.getCell('I2').value.hyperlink, /\/api\/hart\/comprobantes\//);
   assert.equal(wb.getWorksheet('Resumen HART').getCell('B2').value, 9000);
 });
+
+test('protected PDF receipts are archived byte-for-byte instead of losing their original content', async () => {
+  const original = await PDFDocument.create(); original.addPage();
+  // An encryption dictionary marks this structural fixture as protected.
+  original.context.trailerInfo.Encrypt = original.context.register(original.context.obj({ Filter: 'Standard', V: 1, R: 2, P: -4 }));
+  const bytes = await original.save({ useObjectStreams: false });
+  const expense = validateExpense({ ...base(), has_receipt: true, original_amount: 30 });
+  assert.deepEqual(await buildHartPdf(expense, { bytes, mime: 'application/pdf' }), bytes);
+});

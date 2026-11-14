@@ -32,7 +32,7 @@ test('mobile project switch, STLC isolation, EUR receipt, USD 18 affidavit and o
   await page.getByRole('combobox', { name: 'Moneda', exact: true }).selectOption('EUR');
   await expect(page.getByLabel('Tipo de cambio: USD por 1 EUR')).toHaveValue('1.15');
   const doc = await PDFDocument.create(); doc.addPage();
-  await page.getByLabel('Factura o recibo (PDF, JPG o PNG; máximo 20 MB)').setInputFiles({ name: 'recibo.pdf', mimeType: 'application/pdf', buffer: Buffer.from(await doc.save()) });
+  await page.getByLabel('PDF del comprobante', { exact: true }).setInputFiles({ name: 'recibo.pdf', mimeType: 'application/pdf', buffer: Buffer.from(await doc.save()) });
   await page.getByRole('button', { name: 'Guardar gasto', exact: true }).click();
   await expect(page.getByRole('form', { name: 'Nuevo gasto HART' })).toHaveCount(0);
   await expect(page.getByText('Compra EUR de prueba', { exact: true })).toBeVisible();
