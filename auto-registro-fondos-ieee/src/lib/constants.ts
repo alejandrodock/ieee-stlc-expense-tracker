@@ -32,6 +32,8 @@ export const TIPOS_COMPROBANTE = [
   { value: 'sin_comprobante', label: 'Sin factura ni recibo (gasto menor)', labelEn: 'No invoice or receipt (minor expense)' },
 ] as const;
 
+export const MAX_TIPO_COMPROBANTE_LENGTH = 100;
+
 /** Fotos o videos de respaldo por gasto (además del comprobante PDF). */
 export const MAX_MEDIA = 3;
 /** Límite por archivo (el plan gratuito de Supabase Storage admite hasta 50 MB). */
@@ -49,9 +51,13 @@ export const PRESUPUESTO_INICIAL = Math.round(MONTO_ASIGNADO_USD * TIPO_CAMBIO_U
 export type CategoriaValue = typeof CATEGORIAS[number]['value'];
 export type TipoComprobanteValue = typeof TIPOS_COMPROBANTE[number]['value'] | 'factura';
 
+export function normalizeTipoComprobante(value: string): string {
+  return value === 'factura' || value === 'factura_ieee' ? 'factura_personal' : value;
+}
+
 export function getTipoComprobanteLabel(value: string, lang: Lang = 'es'): string {
   // Registros antiguos ('factura', 'factura_ieee') también se emitieron a nombre del responsable.
-  const v = value === 'factura' || value === 'factura_ieee' ? 'factura_personal' : value;
+  const v = normalizeTipoComprobante(value);
   const t = TIPOS_COMPROBANTE.find((x) => x.value === v);
   if (!t) return value;
   return lang === 'en' ? t.labelEn : t.label;

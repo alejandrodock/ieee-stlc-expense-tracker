@@ -7,8 +7,8 @@ import {
   ChevronDown, ListChecks, MessageSquareQuote, FileUp, AlertTriangle, RefreshCw,
 } from 'lucide-react';
 import {
-  CATEGORIAS, TIPOS_COMPROBANTE, TIPO_CAMBIO_USD,
-  getCategoriaLabel, getTipoComprobanteLabel, generatePdfFilename, formatMonto,
+  CATEGORIAS, MAX_TIPO_COMPROBANTE_LENGTH, TIPOS_COMPROBANTE, TIPO_CAMBIO_USD,
+  getCategoriaLabel, getTipoComprobanteLabel, normalizeTipoComprobante, generatePdfFilename, formatMonto,
   formatTipoCambio, todayLocal,
 } from '@/lib/constants';
 import DocumentScanner, { type ScanResult } from '@/components/scanner/DocumentScanner';
@@ -37,7 +37,8 @@ const MAX_PDF_MB = 20;
 export const DRAFT_KEY = 'nueva-compra-draft';
 type Draft = {
   fecha: string; categoria: string; proveedor: string; descripcion: string;
-  observaciones: string; tipoComprobante: string; montoBob: string; step: number;
+  observaciones: string; tipoComprobante: string; tipoComprobantePersonalizado: string;
+  montoBob: string; step: number;
   /** Set when the draft belongs to the edition of an existing expense. */
   editId?: string;
 };
@@ -46,12 +47,29 @@ export function loadDraft(): Partial<Draft> {
 }
 function initialValues(gasto: Gasto | undefined, initialStep: number | undefined): Partial<Draft> {
   const saved = loadDraft();
-  if ((saved.editId ?? null) === (gasto?.id ?? null) && Object.keys(saved).length) return saved;
+  if ((saved.editId ?? null) === (gasto?.id ?? null) && Object.keys(saved).length) {
+    const tipoGuardado = saved.tipoComprobante ? normalizeTipoComprobante(saved.tipoComprobante) : '';
+    if (tipoGuardado !== saved.tipoComprobante && TIPOS_COMPROBANTE.some((tipo) => tipo.value === tipoGuardado)) {
+      return { ...saved, tipoComprobante: tipoGuardado, tipoComprobantePersonalizado: '' };
+    }
+    if (tipoGuardado && !TIPOS_COMPROBANTE.some((tipo) => tipo.value === tipoGuardado)) {
+      return {
+        ...saved,
+        tipoComprobante: 'personalizado',
+        tipoComprobantePersonalizado: tipoGuardado,
+      };
+    }
+    return { ...saved, tipoComprobante: tipoGuardado || saved.tipoComprobante };
+  }
   if (!gasto) return {};
+  const tipoGuardado = normalizeTipoComprobante(gasto.tipo_comprobante);
+  const tipoPredefinido = TIPOS_COMPROBANTE.some((tipo) => tipo.value === tipoGuardado);
   return {
     fecha: gasto.fecha, categoria: gasto.categoria, proveedor: gasto.proveedor,
     descripcion: gasto.descripcion ?? '', observaciones: gasto.observaciones ?? '',
-    tipoComprobante: gasto.tipo_comprobante, montoBob: String(gasto.monto_bob), step: initialStep ?? 1,
+    tipoComprobante: tipoPredefinido ? tipoGuardado : 'personalizado',
+    tipoComprobantePersonalizado: tipoPredefinido ? '' : tipoGuardado,
+    montoBob: String(gasto.monto_bob), step: initialStep ?? 1,
     editId: gasto.id,
   };
 }
@@ -71,6 +89,7 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
   const [descripcion, setDescripcion] = useState(draft.descripcion ?? '');
   const [observaciones, setObservaciones] = useState(draft.observaciones ?? '');
   const [tipoComprobante, setTipoComprobante] = useState<string>(draft.tipoComprobante ?? 'factura_personal');
+  const [tipoComprobantePersonalizado, setTipoComprobantePersonalizado] = useState(draft.tipoComprobantePersonalizado ?? '');
   const [montoBob, setMontoBob] = useState(draft.montoBob ?? '');
   const [cameraOpen, setCameraOpen] = useState(false);
   const [attachment, setAttachment] = useState<Attachment | null>(null);
@@ -85,6 +104,9 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const montoNum = Math.round((parseFloat(montoBob) || 0) * 100) / 100;
+  const tipoComprobanteValue = tipoComprobante === 'personalizado'
+    ? tipoComprobantePersonalizado.trim()
+    : tipoComprobante;
   // When editing, the expense's previous amount is already deducted from the balance.
   const nuevoSaldo = saldoActual + (gasto?.monto_bob ?? 0) - montoNum;
   const tienePdfGuardado = !!gasto?.pdf_url;
@@ -92,9 +114,12 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
   const isSubmitting = status !== null;
 
   useEffect(() => {
-    const d: Draft = { fecha, categoria, proveedor, descripcion, observaciones, tipoComprobante, montoBob, step, editId: gasto?.id };
+    const d: Draft = {
+      fecha, categoria, proveedor, descripcion, observaciones, tipoComprobante,
+      tipoComprobantePersonalizado, montoBob, step, editId: gasto?.id,
+    };
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch { /* ignore */ }
-  }, [fecha, categoria, proveedor, descripcion, observaciones, tipoComprobante, montoBob, step, gasto?.id]);
+  }, [fecha, categoria, proveedor, descripcion, observaciones, tipoComprobante, tipoComprobantePersonalizado, montoBob, step, gasto?.id]);
 
   const handleClose = () => {
     if (isSubmitting) return;
@@ -196,7 +221,7 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
     const datosCambiaron = !!gasto && (
       gasto.fecha !== fecha || gasto.categoria !== categoria || gasto.proveedor !== proveedor.trim()
       || (gasto.descripcion ?? '') !== descripcion.trim() || (gasto.observaciones ?? '') !== observaciones.trim()
-      || gasto.tipo_comprobante !== tipoComprobante || Number(gasto.monto_bob) !== montoNum
+      || gasto.tipo_comprobante !== tipoComprobanteValue || Number(gasto.monto_bob) !== montoNum
     );
 
     try {
@@ -205,7 +230,7 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
         fecha,
         proveedor: proveedor.trim(),
         categoria: getCategoriaLabel(categoria),
-        tipoComprobante: getTipoComprobanteLabel(tipoComprobante),
+        tipoComprobante: getTipoComprobanteLabel(tipoComprobanteValue),
         montoBob: formatMonto(montoNum),
         montoUsd: formatMonto(montoUsd),
         tipoCambio: formatTipoCambio(),
@@ -264,7 +289,7 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
           proveedor: proveedor.trim(),
           descripcion: descripcion.trim() || null,
           observaciones: observaciones.trim() || null,
-          tipo_comprobante: tipoComprobante,
+          tipo_comprobante: tipoComprobanteValue,
           monto_bob: montoNum,
           tiene_comprobante: tieneComprobante,
         }),
@@ -399,7 +424,7 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
                 <span className="flex items-center gap-2 text-xs font-medium text-muted">
                   <FileText className="w-3.5 h-3.5 text-faint" /> Tipo de Comprobante
                 </span>
-                <div className="grid grid-cols-1 gap-2" role="radiogroup">
+                <div className="grid grid-cols-1 gap-2" role="radiogroup" aria-label="Tipo de comprobante">
                   {TIPOS_COMPROBANTE.map((tipo) => {
                     const sel = tipoComprobante === tipo.value;
                     return (
@@ -415,12 +440,36 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
                       </button>
                     );
                   })}
+                  <button
+                    type="button" role="radio" aria-checked={tipoComprobante === 'personalizado'}
+                    onClick={() => setTipoComprobante('personalizado')}
+                    className={`px-3.5 py-2.5 rounded-xl text-xs text-left transition-all flex items-center justify-between border ${
+                      tipoComprobante === 'personalizado'
+                        ? 'bg-brand/15 border-brand-soft/50 text-fg'
+                        : 'bg-ink-800 border-line text-muted hover:text-fg hover:bg-white/[0.03]'
+                    }`}
+                  >
+                    <span className="font-medium">Otro (especificar)</span>
+                    {tipoComprobante === 'personalizado' && <CheckCircle2 className="w-4 h-4 text-brand-soft" />}
+                  </button>
                 </div>
+                {tipoComprobante === 'personalizado' && (
+                  <input
+                    id="tipo-comprobante-personalizado"
+                    type="text"
+                    maxLength={MAX_TIPO_COMPROBANTE_LENGTH}
+                    value={tipoComprobantePersonalizado}
+                    onChange={(e) => setTipoComprobantePersonalizado(e.target.value)}
+                    placeholder="Escribe el tipo de comprobante"
+                    aria-label="Nombre del tipo de comprobante"
+                    className={`${inputCls} py-2.5`}
+                  />
+                )}
               </div>
 
               <button
                 onClick={() => setStep(2)}
-                disabled={!categoria || !proveedor.trim() || !fecha}
+                disabled={!categoria || !proveedor.trim() || !fecha || !tipoComprobanteValue || tipoComprobanteValue.length > MAX_TIPO_COMPROBANTE_LENGTH}
                 className="w-full py-3.5 rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 Continuar

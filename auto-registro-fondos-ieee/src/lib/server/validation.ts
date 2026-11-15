@@ -1,5 +1,7 @@
 import 'server-only';
-import { CATEGORIAS, TIPOS_COMPROBANTE, TIPO_CAMBIO_USD } from '@/lib/constants';
+import {
+  CATEGORIAS, MAX_TIPO_COMPROBANTE_LENGTH, TIPOS_COMPROBANTE, TIPO_CAMBIO_USD,
+} from '@/lib/constants';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const isUuid = (v: unknown): v is string => typeof v === 'string' && UUID_RE.test(v);
@@ -42,7 +44,11 @@ export function parseGastoInput(body: unknown): Result {
   if (!isUuid(b.id)) return { ok: false, error: 'id inválido' };
   if (!isValidDate(b.fecha)) return { ok: false, error: 'Fecha inválida' };
   if (!CATEGORIAS.some((c) => c.value === b.categoria)) return { ok: false, error: 'Categoría inválida' };
-  if (!TIPOS_COMPROBANTE.some((t) => t.value === b.tipo_comprobante)) {
+  const tipo_comprobante = typeof b.tipo_comprobante === 'string' ? b.tipo_comprobante.trim() : '';
+  if (
+    !TIPOS_COMPROBANTE.some((t) => t.value === tipo_comprobante)
+    && (!tipo_comprobante || tipo_comprobante.length > MAX_TIPO_COMPROBANTE_LENGTH)
+  ) {
     return { ok: false, error: 'Tipo de comprobante inválido' };
   }
   const proveedor = typeof b.proveedor === 'string' ? b.proveedor.trim() : '';
@@ -65,7 +71,7 @@ export function parseGastoInput(body: unknown): Result {
       proveedor,
       descripcion,
       observaciones,
-      tipo_comprobante: b.tipo_comprobante as string,
+      tipo_comprobante,
       monto_bob,
       monto_usd: Math.round((monto_bob / TIPO_CAMBIO_USD) * 100) / 100,
       tiene_comprobante: b.tiene_comprobante === true,

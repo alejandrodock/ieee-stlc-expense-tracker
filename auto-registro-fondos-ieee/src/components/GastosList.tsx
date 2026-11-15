@@ -1,11 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Trash2, Receipt, Download, HardDrive, Images, Film, Pencil, Paperclip } from 'lucide-react';
+import { FileText, Trash2, Receipt, Download, HardDrive, Images, Film, Pencil, Paperclip, ChevronDown } from 'lucide-react';
 import CategoryIcon from '@/components/CategoryIcon';
 import ShareGalleryButton from '@/components/media/ShareGalleryButton';
 import {
-  getCategoriaLabel, getTipoComprobanteLabel, formatMonto, formatDate, MAX_MEDIA,
+  CATEGORIAS, getCategoriaLabel, getTipoComprobanteLabel, formatMonto, formatDate, MAX_MEDIA,
 } from '@/lib/constants';
 import { isVideoMime } from '@/lib/media-client';
 import { mediaUrl, type Gasto } from '@/lib/types';
@@ -19,27 +20,51 @@ interface GastosListProps {
 }
 
 export default function GastosList({ gastos, onDelete, onEditMedia, onEdit }: GastosListProps) {
-  if (gastos.length === 0) {
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-14">
-        <div className="w-12 h-12 mx-auto mb-4 rounded-full border border-line flex items-center justify-center text-faint">
-          <Receipt className="w-5 h-5" strokeWidth={1.5} />
-        </div>
-        <p className="text-sm text-fg/80">Aún no hay compras registradas</p>
-        <p className="text-xs text-faint mt-1">Usa «Registrar compra» para añadir la primera.</p>
-      </motion.div>
-    );
-  }
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('');
+  const categoriasEvento = CATEGORIAS.filter((categoria) => categoria.value !== 'operativos');
+  const gastosFiltrados = categoriaSeleccionada
+    ? gastos.filter((gasto) => gasto.categoria === categoriaSeleccionada)
+    : gastos;
 
   return (
     <section>
-      <div className="flex items-baseline justify-between px-1 mb-3">
+      <div className="flex items-center justify-between gap-3 px-1 mb-3">
         <h3 className="text-[11px] uppercase tracking-[0.16em] text-muted">Compras</h3>
-        <span className="text-[11px] text-faint tabular">{gastos.length}</span>
+        <div className="flex items-center gap-2">
+          <label htmlFor="filtro-categoria-compras" className="sr-only">Filtrar compras por categoría</label>
+          <div className="relative">
+            <select
+              id="filtro-categoria-compras"
+              value={categoriaSeleccionada}
+              onChange={(event) => setCategoriaSeleccionada(event.target.value)}
+              className="appearance-none rounded-lg border border-line bg-ink-800 py-2 pl-3 pr-8 text-xs text-fg focus:outline-none focus:border-brand-soft/60"
+            >
+              <option value="">Todas las categorías</option>
+              {categoriasEvento.map((categoria) => (
+                <option key={categoria.value} value={categoria.value}>{categoria.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+          </div>
+          <span className="text-[11px] text-faint tabular">
+            {categoriaSeleccionada ? `${gastosFiltrados.length}/${gastos.length}` : gastos.length}
+          </span>
+        </div>
       </div>
 
+      {gastosFiltrados.length === 0 ? (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-14">
+          <div className="w-12 h-12 mx-auto mb-4 rounded-full border border-line flex items-center justify-center text-faint">
+            <Receipt className="w-5 h-5" strokeWidth={1.5} />
+          </div>
+          <p className="text-sm text-fg/80">
+            {gastos.length === 0 ? 'Aún no hay compras registradas' : 'No hay compras en esta categoría'}
+          </p>
+          {gastos.length === 0 && <p className="text-xs text-faint mt-1">Usa «Registrar compra» para añadir la primera.</p>}
+        </motion.div>
+      ) : (
       <ul className="rounded-2xl bg-ink-900 border border-line divide-y divide-line overflow-hidden">
-        {gastos.map((gasto, i) => {
+        {gastosFiltrados.map((gasto, i) => {
           const pdf = gasto.pdf_url ?? gasto.drive_url;
           const media = gasto.media ?? [];
           return (
@@ -195,6 +220,7 @@ export default function GastosList({ gastos, onDelete, onEditMedia, onEdit }: Ga
           );
         })}
       </ul>
+      )}
     </section>
   );
 }

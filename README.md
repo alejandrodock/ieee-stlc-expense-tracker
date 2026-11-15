@@ -48,6 +48,7 @@ Variables obligatorias: `NEXT_PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`
 - Se conserva la tabla real `gastos`; no existe una tabla `expenses` en este proyecto.
 - `project_id TEXT NOT NULL DEFAULT 'STLC'` asigna los registros anteriores a STLC sin cambiar importes, fechas, categorías, comprobantes ni evidencias.
 - Los campos adicionales de moneda se usan en HART. Los valores históricos de `monto_bob` y `monto_usd` de STLC permanecen intactos.
+- El dashboard STLC filtra compras por sus ocho categorías del evento; `Gastos operativos` sigue visible al elegir todas. Se admiten tipos de comprobante personalizados, conservados al editar y en PDF/Excel.
 - HART guarda `original_amount`, `original_currency`, `exchange_rate` (USD por unidad de moneda), `amount_usd`, `has_receipt`, nombre del firmante y origen/fecha de la tasa. No se inventa un equivalente en BOB para compras HART en EUR/USD.
 - Las tablas mantienen RLS y se revocan permisos directos de `anon`/`authenticated`. El servidor usa `service_role`, que omite RLS: por ello todas las operaciones se restringen también explícitamente por proyecto. No se agrega una política pública que confíe en LocalStorage.
 - La vista antigua `resumen_categorias` sigue resumiendo exclusivamente STLC.
