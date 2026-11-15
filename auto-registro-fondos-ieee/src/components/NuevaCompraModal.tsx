@@ -48,6 +48,7 @@ export function loadDraft(): Partial<Draft> {
 function initialValues(gasto: Gasto | undefined, initialStep: number | undefined): Partial<Draft> {
   const saved = loadDraft();
   if ((saved.editId ?? null) === (gasto?.id ?? null) && Object.keys(saved).length) {
+    if (saved.tipoComprobante === 'personalizado') return saved;
     const tipoGuardado = saved.tipoComprobante ? normalizeTipoComprobante(saved.tipoComprobante) : '';
     if (tipoGuardado !== saved.tipoComprobante && TIPOS_COMPROBANTE.some((tipo) => tipo.value === tipoGuardado)) {
       return { ...saved, tipoComprobante: tipoGuardado, tipoComprobantePersonalizado: '' };
