@@ -2,7 +2,7 @@ import 'server-only';
 import ExcelJS from 'exceljs';
 import {
   CATEGORIAS, MONTO_ASIGNADO_USD, PRESUPUESTO_INICIAL, RESPONSABLE_PERFIL, TIPO_CAMBIO_USD,
-  getCategoriaLabel, getTipoComprobanteLabel, type Lang,
+  getCategoriaColor, getCategoriaLabel, getTipoComprobanteLabel, type Lang,
 } from '@/lib/constants';
 import { galeriaUrl, type Gasto } from '@/lib/types';
 import { getFirmaPng, pngSize } from '@/lib/server/firma';
@@ -28,6 +28,7 @@ const T = {
     detail: 'DETALLE DE GASTOS',
     cols: ['N°', 'Fecha', 'Categoría', 'Proveedor o concepto', 'Descripción de los elementos', 'Observaciones', 'Tipo de comprobante', 'Monto (Bs)', 'Monto (USD)', 'Comprobante', 'Fotos y videos'],
     total: 'TOTAL', view: 'Ver PDF', none: 'Sin comprobante', files: (n: number) => `Ver ${n} archivo${n === 1 ? '' : 's'}`, noExpenses: 'No hay gastos registrados.',
+    group: (n: number) => `${n} gasto${n === 1 ? '' : 's'}`, subtotal: 'Subtotal',
     signTitle: 'FIRMA DEL RESPONSABLE',
     signHere: 'Firma digital',
     declaration:
@@ -53,6 +54,7 @@ const T = {
     detail: 'EXPENSE DETAIL',
     cols: ['No.', 'Date', 'Category', 'Vendor or item', 'Item description', 'Notes', 'Receipt type', 'Amount (BOB)', 'Amount (USD)', 'Receipt', 'Photos and videos'],
     total: 'TOTAL', view: 'View PDF', none: 'No receipt', files: (n: number) => `View ${n} file${n === 1 ? '' : 's'}`, noExpenses: 'No expenses recorded.',
+    group: (n: number) => `${n} expense${n === 1 ? '' : 's'}`, subtotal: 'Subtotal',
     signTitle: 'FUND HOLDER SIGNATURE',
     signHere: 'Digital signature',
     declaration:
@@ -80,6 +82,13 @@ const medium = { style: 'medium' as const, color: { argb: BLUE } };
 const allThin = { top: thin, left: thin, bottom: thin, right: thin };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Color de la categoría (como en la app) en ARGB, mezclado con blanco: `amount` = 1 es el color pleno. */
+function categoryArgb(value: string, amount = 1): string {
+  const hex = getCategoriaColor(value).replace('#', '');
+  const mix = (i: number) => Math.round(255 - (255 - parseInt(hex.slice(i, i + 2), 16)) * amount);
+  return 'FF' + [0, 2, 4].map((i) => mix(i).toString(16).padStart(2, '0')).join('').toUpperCase();
+}
 
 function toDate(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number);
@@ -284,6 +293,9 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     row.getCell(9).numFmt = MONEY;
     styleBodyRow(row, [1, 2, 3, 4, 5, 6, 7, 8, 9], r % 2 === 0);
     row.getCell(1).alignment = { indent: 1 };
+    // mismo color suave que la sección de la categoría en el detalle
+    row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: categoryArgb(cat.value, 0.22) } };
+    row.getCell(1).border = { ...allThin, left: { style: 'thick', color: { argb: categoryArgb(cat.value) } } };
     row.getCell(6).alignment = { horizontal: 'center' };
     r++;
   }
@@ -317,7 +329,53 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     ws.getCell(`A${r}`).font = { italic: true, color: { argb: MUTED } };
     r++;
   }
-  gastos.forEach((g, i) => {
+  // Agrupado por categoría (mismo orden que en la app), cada grupo con su fila separadora.
+  const catOrder = (v: string) => {
+    const i = CATEGORIAS.findIndex((c) => c.value === v);
+    return i === -1 ? CATEGORIAS.length : i;
+  };
+  const ordered = [...gastos].sort((a, b) => catOrder(a.categoria) - catOrder(b.categoria));
+  const groups: Gasto[][] = [];
+  for (const g of ordered) {
+    const last = groups[groups.length - 1];
+    if (last && last[0].categoria === g.categoria) last.push(g);
+    else groups.push([g]);
+  }
+
+  let n = 0;
+  for (const group of groups) {
+    const cat = group[0].categoria;
+    const soft = categoryArgb(cat, 0.22);
+    const strong = categoryArgb(cat);
+    const sep = ws.getRow(r);
+    const first = r + 1;
+    const last = r + group.length;
+    const groupBob = round2(group.reduce((s, g) => s + Number(g.monto_bob), 0));
+    const groupUsd = round2(group.reduce((s, g) => s + usdOf(g), 0));
+    ws.mergeCells(`A${r}:G${r}`);
+    sep.getCell(1).value = `${tr(catLabel(cat)).toUpperCase()}   ·   ${t.group(group.length)}`;
+    // SUBTOTAL: el total general (también con SUBTOTAL) no vuelve a sumar estas filas
+    sep.getCell(8).value = { formula: `SUBTOTAL(9,H${first}:H${last})`, result: groupBob };
+    sep.getCell(9).value = { formula: `SUBTOTAL(9,I${first}:I${last})`, result: groupUsd };
+    sep.getCell(10).value = t.subtotal;
+    for (let c = 1; c <= 11; c++) {
+      const cell = sep.getCell(c);
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: soft } };
+      cell.font = { bold: true, size: 9, color: { argb: 'FF14283E' } };
+      cell.border = { top: { style: 'thin', color: { argb: strong } }, bottom: { style: 'thin', color: { argb: strong } } };
+    }
+    sep.getCell(1).border = { ...sep.getCell(1).border, left: { style: 'thick', color: { argb: strong } } };
+    sep.getCell(11).border = { ...sep.getCell(11).border, right: thin };
+    sep.getCell(1).alignment = { vertical: 'middle', indent: 1 };
+    sep.getCell(8).numFmt = MONEY;
+    sep.getCell(9).numFmt = MONEY;
+    sep.getCell(10).font = { size: 8, color: { argb: MUTED }, italic: true };
+    sep.getCell(10).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+    sep.height = 20;
+    r++;
+
+    group.forEach((g, gi) => {
+    const i = n++;
     const row = ws.getRow(r);
     const bob = Number(g.monto_bob);
     const usd = usdOf(g);
@@ -339,7 +397,8 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     row.getCell(2).numFmt = t.dateFmt;
     row.getCell(8).numFmt = MONEY;
     row.getCell(9).numFmt = MONEY;
-    styleBodyRow(row, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], i % 2 === 1);
+    styleBodyRow(row, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], gi % 2 === 1);
+    row.getCell(1).border = { ...allThin, left: { style: 'thick', color: { argb: strong } } };
     for (const c of [3, 4, 5, 6, 7]) row.getCell(c).alignment = { vertical: 'top', wrapText: true };
     row.getCell(1).alignment = { vertical: 'top', horizontal: 'center' };
     row.getCell(2).alignment = { vertical: 'top', horizontal: 'center' };
@@ -348,13 +407,14 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     row.getCell(11).alignment = { vertical: 'top', horizontal: 'center' };
     row.getCell(11).font = nMedia ? { color: { argb: BLUE }, underline: true, size: 9 } : { color: { argb: MUTED }, size: 9 };
     r++;
-  });
+    });
+  }
   const detTotal = ws.getRow(r);
   ws.mergeCells(`A${r}:G${r}`);
   detTotal.getCell(1).value = t.total;
-  detTotal.getCell(8).value = { formula: `SUM(H${detFirst}:H${Math.max(detFirst, r - 1)})`, result: totalBob };
+  detTotal.getCell(8).value = { formula: `SUBTOTAL(9,H${detFirst}:H${Math.max(detFirst, r - 1)})`, result: totalBob };
   detTotal.getCell(8).numFmt = MONEY;
-  detTotal.getCell(9).value = { formula: `SUM(I${detFirst}:I${Math.max(detFirst, r - 1)})`, result: totalUsd };
+  detTotal.getCell(9).value = { formula: `SUBTOTAL(9,I${detFirst}:I${Math.max(detFirst, r - 1)})`, result: totalUsd };
   detTotal.getCell(9).numFmt = MONEY;
   styleTotalRow(detTotal, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   ws.autoFilter = { from: { row: detFirst - 1, column: 1 }, to: { row: Math.max(detFirst, r - 1), column: 11 } };
