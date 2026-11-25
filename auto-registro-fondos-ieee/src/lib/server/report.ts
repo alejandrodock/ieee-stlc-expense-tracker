@@ -6,6 +6,7 @@ import {
 } from '@/lib/constants';
 import { galeriaUrl, type Gasto } from '@/lib/types';
 import { getFirmaPng, pngSize } from '@/lib/server/firma';
+import { translateToEnglish } from '@/lib/server/translate';
 
 const EVENT = 'IEEE Student Tech Leadership Conference';
 const VENUE = 'Universidad Mayor de San Andrés · La Paz, Bolivia · 2026';
@@ -87,6 +88,27 @@ function toDate(iso: string): Date {
 
 export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): Promise<Buffer> {
   const t = T[lang];
+
+  // Reporte en inglés: los textos escritos a mano (proveedor, descripción, observaciones,
+  // tipos de comprobante o categorías personalizados) se traducen automáticamente al exportar.
+  // Las etiquetas fijas ya tienen versión en inglés; los textos que no se reconocen van al traductor.
+  const tr = lang === 'en'
+    ? await translateToEnglish(gastos.flatMap((g) => [
+        g.proveedor, g.descripcion, g.observaciones,
+        // getXLabel devuelve el valor tal cual cuando es un texto personalizado
+        getTipoComprobanteLabel(g.tipo_comprobante, lang) === g.tipo_comprobante ? g.tipo_comprobante : null,
+        getCategoriaLabel(g.categoria, lang) === g.categoria ? g.categoria : null,
+      ]))
+    : (s: string | null | undefined) => s ?? '';
+  // El proveedor suele ser un nombre propio: se muestra la traducción con el original entre
+  // paréntesis para que siga coincidiendo con el nombre que figura en la factura o recibo.
+  const proveedorLabel = (p: string) => {
+    const en = tr(p);
+    return en.trim().toLowerCase() === p.trim().toLowerCase() ? p : `${en} (${p})`;
+  };
+  const tipoLabel = (v: string) => getTipoComprobanteLabel(v, lang);
+  const catLabel = (v: string) => getCategoriaLabel(v, lang);
+
   const wb = new ExcelJS.Workbook();
   wb.creator = RESPONSABLE_PERFIL.nombre;
   wb.created = new Date();
@@ -304,11 +326,11 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     row.values = [
       i + 1,
       toDate(g.fecha),
-      getCategoriaLabel(g.categoria, lang),
-      g.proveedor,
-      g.descripcion ?? '',
-      g.observaciones ?? '',
-      getTipoComprobanteLabel(g.tipo_comprobante, lang),
+      tr(catLabel(g.categoria)),
+      proveedorLabel(g.proveedor),
+      tr(g.descripcion),
+      tr(g.observaciones),
+      tr(tipoLabel(g.tipo_comprobante)),
       bob,
       usd,
       href ? { text: t.view, hyperlink: href } : t.none,

@@ -5,6 +5,8 @@ import { GASTO_COLUMNS, type Gasto } from '@/lib/types';
 import type { Lang } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
+// La versión en inglés traduce los textos libres con una API externa.
+export const maxDuration = 60;
 
 /** GET /api/export?lang=es|en -> styled Excel expense report. */
 export async function GET(req: NextRequest) {
