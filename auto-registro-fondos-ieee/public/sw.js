@@ -1,5 +1,5 @@
 // Bump on every deploy that changes caching behaviour; old caches are purged on activate.
-const CACHE_NAME = 'ieee-projects-v4';
+const CACHE_NAME = 'ieee-projects-v5';
 const OFFLINE_URLS = ['/', '/stlc', '/hart'];
 
 self.addEventListener('install', (event) => {
@@ -19,7 +19,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   // Only same-origin app assets; never cache API data, receipts or third-party requests.
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/galeria/')) return;
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/galeria/') || url.pathname.startsWith('/hackathon')) return;
   // RSC responses are not full HTML documents and must not replace a cached page.
   if (request.headers.has('RSC') || url.searchParams.has('_rsc')) return;
 

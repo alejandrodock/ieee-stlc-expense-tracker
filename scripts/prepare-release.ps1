@@ -36,5 +36,5 @@ foreach ($folder in @('hart-registro-fondos-ieee', 'tests', 'scripts')) {
     Copy-ReleaseFile $_.FullName $_.FullName.Substring($workspacePath.Length + 1)
   }
 }
-foreach ($file in @('package.json','package-lock.json','README.md','.gitignore','playwright.config.mjs')) { Copy-ReleaseFile (Join-Path $workspacePath $file) $file }
+foreach ($file in @('package.json','package-lock.json','README.md','.gitignore','.vercelignore','playwright.config.mjs')) { Copy-ReleaseFile (Join-Path $workspacePath $file) $file }
 Write-Output "Prepared release: $releasePath"

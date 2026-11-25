@@ -213,7 +213,11 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
       .catch(() => null);
 
   const handleSubmit = async () => {
-    if (!categoria || !proveedor.trim() || montoNum <= 0 || comprobantePendiente) return;
+    if (isSubmitting || !categoria || !proveedor.trim() || montoNum <= 0 || comprobantePendiente) return;
+    if (!tipoComprobanteValue || tipoComprobanteValue.length > MAX_TIPO_COMPROBANTE_LENGTH) {
+      setError(`Vuelve al paso Datos e indica el tipo de comprobante (entre 1 y ${MAX_TIPO_COMPROBANTE_LENGTH} caracteres).`);
+      return;
+    }
     setError(null);
     const id = gasto?.id ?? crypto.randomUUID();
     let tieneComprobante = false;
@@ -461,7 +465,7 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
                     maxLength={MAX_TIPO_COMPROBANTE_LENGTH}
                     value={tipoComprobantePersonalizado}
                     onChange={(e) => setTipoComprobantePersonalizado(e.target.value)}
-                    placeholder="Escribe el tipo de comprobante"
+                    placeholder="Ej: Factura a nombre de Fabian Borda"
                     aria-label="Nombre del tipo de comprobante"
                     className={`${inputCls} py-2.5`}
                   />
@@ -624,7 +628,7 @@ export default function NuevaCompraModal({ isOpen, onClose, onSuccess, saldoActu
                 <div className="flex justify-between gap-4"><span className="text-muted">Proveedor:</span><span className="text-fg font-medium text-right truncate">{proveedor}</span></div>
                 {descripcion && <div className="flex justify-between gap-4"><span className="text-muted flex-shrink-0">Detalle:</span><span className="text-fg/80 text-right truncate">{descripcion}</span></div>}
                 {observaciones && <div className="flex justify-between gap-4"><span className="text-warn flex-shrink-0">Observaciones:</span><span className="text-fg/80 text-right truncate">{observaciones}</span></div>}
-                <div className="flex justify-between gap-4"><span className="text-muted">Tipo:</span><span className="text-fg text-right">{getTipoComprobanteLabel(tipoComprobante)}</span></div>
+                <div className="flex justify-between gap-4"><span className="text-muted">Tipo:</span><span className="text-fg text-right">{getTipoComprobanteLabel(tipoComprobanteValue)}</span></div>
                 <div className="flex justify-between"><span className="text-muted">Monto:</span><span className="text-fg font-semibold tabular">Bs. {formatMonto(montoNum)}</span></div>
               </div>
 

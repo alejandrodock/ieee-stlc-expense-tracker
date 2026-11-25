@@ -1,0 +1,9 @@
+.deployment
+**/.git
+**/.env*
+**/node_modules
+**/.next
+**/*.tsbuildinfo
+test-results
+playwright-report
+.claude

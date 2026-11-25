@@ -1,5 +1,19 @@
 # IEEE STLC & HART 2026 — workspace
 
+## Telecom Innovation Hackathon
+
+El módulo `/hackathon` comparte el mismo host Next.js, dominio Vercel y Supabase. Cada jurado entra mediante un enlace personal con un secreto aleatorio de 256 bits en el fragmento `#acceso=…`; el servidor recibe el secreto exclusivamente en `Authorization` y compara su hash SHA-256. El enlace de coordinación solo permite consultar resultados y exportar CSV. No publicar ni reenviar ese enlace a los jurados.
+
+Los cinco equipos y las notas proporcionadas están en `src/lib/hackathon/domain.ts` del host. Los criterios 1–5 son editables de 0 a 100 (hasta dos decimales); la sexta nota se obtiene en el servidor y siempre conserva el pitch presencial. IVAN ALEJANDRO MENDOZA MENDOZA no tiene parciales en los primeros cinco criterios: se muestran vacíos. Se captura una copia de las notas parciales junto a cada envío para conservar su referencia histórica.
+
+Las evaluaciones son objetos JSON privados en el bucket separado `telecom-evaluations`, con ruta única `submissions/{jurado}/{equipo}.json`. La creación usa `x-upsert: false`: la restricción única de Storage impide sobrescrituras y envíos simultáneos duplicados entre dispositivos. La aplicación no ofrece rutas para editar o borrar evaluaciones. Los errores de envío se reconcilian consultando el comprobante guardado. Las respuestas API y el portal se excluyen del caché offline.
+
+Provisionar una sola vez con `node --env-file=auto-registro-fondos-ieee/.env.local scripts/provision-hackathon.mjs`. El script conserva los accesos existentes, crea solo el bucket propio y guarda los hashes del acceso en `private/access.json`. Los enlaces originales quedan en `.deployment/hackathon-links.md`, ignorado por Git y Vercel. Conservar una copia privada de este archivo; no regenerar credenciales automáticamente si se pierde. No requiere migraciones ni modifica tablas o archivos de STLC/HART.
+
+Resultados: mismo `/hackathon` con el enlace exclusivo de coordinación. El promedio incluye solo evaluaciones enviadas, con igual peso por jurado. Hasta completar 15 envíos, el tablero advierte que el orden es provisional y no asigna cero a pendientes. El detalle por equipo muestra cada criterio con nota y aporte ponderado por jurado, promedio por criterio y total. CSV incluye cada criterio parcial/final, peso, aporte ponderado, total, fecha y comprobante. Las correcciones deben solicitarse a IVAN ALEJANDRO MENDOZA MENDOZA (+59168108299); requieren una operación administrativa fuera del formulario, conservando antes una copia del registro original.
+
+Validación: `npm test`, `npm run build` y `npx playwright test tests/browser/hackathon.spec.mjs`. La prueba de navegador usa Storage simulado local, verifica acceso, aislamiento de jurados, pitch inmutable, concurrencia, comprobantes tras recargar y resultados; no escribe evaluaciones reales.
+
 Dos módulos aislados bajo **un único proceso Next.js y un único dominio**.
 
 ```text
@@ -42,6 +56,8 @@ Las pruebas unitarias ejecutan una migración real en PostgreSQL embebido (PGlit
 Variables obligatorias: `NEXT_PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`. Las opciones existentes de Google Drive y firma STLC se conservan. `HART_BUDGET_USD` es opcional: su valor predeterminado es **9000**. HART captura una firma por declaración; no reutiliza automáticamente la firma de STLC. ExchangeRate-API no necesita clave en el endpoint elegido.
 
 ## Migración y compatibilidad
+
+Para guardar comprobantes personalizados (por ejemplo, una factura a nombre de otra persona), ejecutar también `auto-registro-fondos-ieee/supabase/migrations/20261115_tipos_comprobante_personalizados.sql` en Supabase SQL Editor después de las migraciones anteriores. Reemplaza la lista cerrada de tipos por texto de 1 a 100 caracteres, sin modificar gastos existentes. Desplegar el código por sí solo no aplica esta migración.
 
 **Ejecutar primero** `auto-registro-fondos-ieee/supabase/migrations/20261113_add_multi_project_support.sql` en Supabase SQL Editor, antes de desplegar el nuevo código. Para una instalación vacía, ejecutar primero el `schema.sql` existente y después esta migración. El script se puede repetir.
 

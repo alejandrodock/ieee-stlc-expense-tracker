@@ -19,16 +19,20 @@ interface GastosListProps {
   onEdit?: (gasto: Gasto, step?: number) => void;
 }
 
+const comprobanteUrl = (gasto: Gasto) => gasto.pdf_url?.trim() || gasto.drive_url?.trim() || null;
+
 export default function GastosList({ gastos, onDelete, onEditMedia, onEdit }: GastosListProps) {
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('');
+  const [soloSinComprobante, setSoloSinComprobante] = useState(false);
   const categoriasEvento = CATEGORIAS.filter((categoria) => categoria.value !== 'operativos');
-  const gastosFiltrados = categoriaSeleccionada
-    ? gastos.filter((gasto) => gasto.categoria === categoriaSeleccionada)
-    : gastos;
+  const gastosFiltrados = gastos.filter((gasto) =>
+    (!categoriaSeleccionada || gasto.categoria === categoriaSeleccionada) &&
+    (!soloSinComprobante || !comprobanteUrl(gasto))
+  );
 
   return (
     <section>
-      <div className="flex items-center justify-between gap-3 px-1 mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-1 mb-3">
         <h3 className="text-[11px] uppercase tracking-[0.16em] text-muted">Compras</h3>
         <div className="flex items-center gap-2">
           <label htmlFor="filtro-categoria-compras" className="sr-only">Filtrar compras por categoría</label>
@@ -46,11 +50,20 @@ export default function GastosList({ gastos, onDelete, onEditMedia, onEdit }: Ga
             </select>
             <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
           </div>
-          <span className="text-[11px] text-faint tabular">
-            {categoriaSeleccionada ? `${gastosFiltrados.length}/${gastos.length}` : gastos.length}
+          <span className="text-[11px] text-faint tabular" aria-live="polite" aria-label="Compras visibles">
+            {categoriaSeleccionada || soloSinComprobante ? `${gastosFiltrados.length}/${gastos.length}` : gastos.length}
           </span>
         </div>
       </div>
+      <label className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 mb-3 text-xs cursor-pointer transition-colors ${soloSinComprobante ? 'border-warn/40 bg-warn/10 text-warn' : 'border-line text-muted hover:text-fg'}`}>
+        <input
+          type="checkbox"
+          checked={soloSinComprobante}
+          onChange={(event) => setSoloSinComprobante(event.target.checked)}
+          className="h-3.5 w-3.5 accent-amber-400"
+        />
+        Sin comprobante
+      </label>
 
       {gastosFiltrados.length === 0 ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-14">
@@ -58,14 +71,16 @@ export default function GastosList({ gastos, onDelete, onEditMedia, onEdit }: Ga
             <Receipt className="w-5 h-5" strokeWidth={1.5} />
           </div>
           <p className="text-sm text-fg/80">
-            {gastos.length === 0 ? 'Aún no hay compras registradas' : 'No hay compras en esta categoría'}
+            {gastos.length === 0 ? 'Aún no hay compras registradas' : soloSinComprobante
+              ? categoriaSeleccionada ? 'No hay compras sin comprobante en esta categoría' : 'No hay compras sin comprobante'
+              : 'No hay compras en esta categoría'}
           </p>
           {gastos.length === 0 && <p className="text-xs text-faint mt-1">Usa «Registrar compra» para añadir la primera.</p>}
         </motion.div>
       ) : (
       <ul className="rounded-2xl bg-ink-900 border border-line divide-y divide-line overflow-hidden">
         {gastosFiltrados.map((gasto, i) => {
-          const pdf = gasto.pdf_url ?? gasto.drive_url;
+          const pdf = comprobanteUrl(gasto);
           const media = gasto.media ?? [];
           return (
             <motion.li

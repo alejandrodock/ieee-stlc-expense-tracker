@@ -8,6 +8,7 @@ import { isDriveSyncEnabled, trashInDrive, uploadToDrive } from '@/lib/server/dr
 import { generatePdfFilename, getCategoriaLabel } from '@/lib/constants';
 import { GASTO_COLUMNS } from '@/lib/types';
 import { removeGastoMediaFiles } from '@/lib/server/media';
+import { gastoWriteError } from '@/lib/server/gasto-errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,7 +92,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error('POST gasto error:', error);
-    return NextResponse.json({ error: 'No se pudo guardar el gasto' }, { status: 500 });
+    const failure = gastoWriteError(error, 'guardar');
+    return NextResponse.json({ error: failure.error }, { status: failure.status });
   }
 }
 
@@ -134,7 +136,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     console.error('PATCH gasto error:', error);
-    return NextResponse.json({ error: 'No se pudo actualizar el gasto' }, { status: 500 });
+    const failure = gastoWriteError(error, 'actualizar');
+    return NextResponse.json({ error: failure.error }, { status: failure.status });
   }
 }
 

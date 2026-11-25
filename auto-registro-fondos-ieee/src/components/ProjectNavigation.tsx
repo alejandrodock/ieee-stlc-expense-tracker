@@ -36,5 +36,10 @@ export function ProjectHub() {
         <p className="text-lg">Presupuesto y reportes en USD</p><p className="text-ok text-sm mt-7">Abrir HART → {last === 'HART' && <span className="block text-muted text-xs mt-2">Último proyecto utilizado</span>}</p>
       </Link>
     </div>
+    <Link href="/hackathon" className="block rounded-2xl border border-line-strong bg-ink-900 p-7 mt-5 hover:border-signal transition-colors">
+      <p className="text-signal text-xs uppercase tracking-widest mb-3">Telecom Innovation Hackathon</p>
+      <h2 className="font-serif text-3xl mb-3">Evaluación de proyectos</h2>
+      <p className="text-muted text-sm">Portal del jurado y resultados. Ingresa con el enlace personal enviado por la coordinación.</p>
+    </Link>
   </main>;
 }

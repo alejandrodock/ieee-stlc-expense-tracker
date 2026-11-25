@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS gastos (
   proveedor TEXT NOT NULL,
   descripcion TEXT,
   observaciones TEXT,
-  tipo_comprobante TEXT NOT NULL CHECK (tipo_comprobante IN ('factura', 'factura_ieee', 'factura_personal', 'recibo', 'sin_comprobante')),
+  tipo_comprobante TEXT NOT NULL CHECK (char_length(btrim(tipo_comprobante)) BETWEEN 1 AND 100),
   monto_bob DECIMAL(12, 2) NOT NULL CHECK (monto_bob > 0),
   monto_usd DECIMAL(12, 2),
   pdf_url TEXT,
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS gastos (
 ALTER TABLE gastos ADD COLUMN IF NOT EXISTS descripcion TEXT;
 ALTER TABLE gastos ADD COLUMN IF NOT EXISTS observaciones TEXT;
 ALTER TABLE gastos DROP CONSTRAINT IF EXISTS gastos_tipo_comprobante_check;
-ALTER TABLE gastos ADD CONSTRAINT gastos_tipo_comprobante_check CHECK (tipo_comprobante IN ('factura', 'factura_ieee', 'factura_personal', 'recibo', 'sin_comprobante'));
+ALTER TABLE gastos ADD CONSTRAINT gastos_tipo_comprobante_check CHECK (char_length(btrim(tipo_comprobante)) BETWEEN 1 AND 100);
 ALTER TABLE gastos DROP CONSTRAINT IF EXISTS gastos_categoria_check;
 
 -- Create indexes for common queries

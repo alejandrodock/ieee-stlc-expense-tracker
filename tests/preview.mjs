@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const stlcId = '623ca6f5-70ca-4fa7-95a0-41aec20238cc';
 const hartId = '623ca6f5-70ca-4fa7-95a0-41aec20238cd';
@@ -9,6 +10,8 @@ let rows = [
   { id: hartId, project_id: 'HART', fecha: '2026-11-02', created_at: '2026-11-02T10:00:00Z', categoria: 'vuelos', proveedor: 'Proveedor HART previo', original_amount: 100, original_currency: 'USD', exchange_rate: 1, amount_usd: 100, has_receipt: true, pdf_url: `/api/hart/comprobantes/${hartId}` },
 ];
 const files = new Map();
+const hash = token => createHash('sha256').update(token).digest('hex');
+files.set('telecom-evaluations/private/access.json', { type: 'application/json', bytes: Buffer.from(JSON.stringify({ admin: hash('a'.repeat(43)), judges: { ivan: hash('i'.repeat(43)), fabian: hash('f'.repeat(43)), eloy: hash('e'.repeat(43)) } })) });
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');
@@ -41,6 +44,11 @@ const server = http.createServer(async (req, res) => {
     const prefix = '/storage/v1/object/';
     if (url.pathname.startsWith(prefix)) {
       let key = decodeURIComponent(url.pathname.slice(prefix.length));
+      if (key.startsWith('info/')) {
+        const file = files.get(key.slice('info/'.length));
+        if (!file) return send(404, { message: 'Not found' });
+        return send(200, { name: key.slice('info/'.length), metadata: { size: file.bytes.length, mimetype: file.type } });
+      }
       if (key.startsWith('upload/sign/')) {
         key = key.slice('upload/sign/'.length);
         if (req.method === 'POST') return send(200, { url: `/object/upload/sign/${key}?token=test` });
@@ -50,6 +58,7 @@ const server = http.createServer(async (req, res) => {
       } else if (key.startsWith('authenticated/')) key = key.slice('authenticated/'.length);
       if (req.method === 'DELETE') { for (const path of json().prefixes ?? []) files.delete(`${key}/${path}`); return send(200, []); }
       if (req.method === 'PUT' || req.method === 'POST') {
+        if (key.startsWith('telecom-evaluations/') && files.has(key) && req.headers['x-upsert'] !== 'true') return send(400, { statusCode: '409', error: 'Duplicate', message: 'The resource already exists' });
         files.set(key, { bytes: body, type: req.headers['content-type'] ?? 'application/pdf' });
         return send(200, { Key: key, Id: crypto.randomUUID() });
       }
