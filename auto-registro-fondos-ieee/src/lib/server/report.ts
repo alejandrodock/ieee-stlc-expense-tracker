@@ -26,7 +26,7 @@ const T = {
     byCat: 'RESUMEN POR CATEGORÍA',
     cat: 'Categoría', nItems: 'N° de gastos', share: '% del total',
     detail: 'DETALLE DE GASTOS',
-    cols: ['N°', 'Fecha', 'Categoría', 'Proveedor o concepto', 'Descripción de los elementos', 'Observaciones', 'Tipo de comprobante', 'Monto (Bs)', 'Monto (USD)', 'Comprobante', 'Fotos y videos'],
+    cols: ['N°', 'Fecha', 'Categoría', 'Proveedor o concepto', 'Descripción de los elementos', 'Observaciones', 'Tipo de comprobante', 'Monto (Bs)', 'Monto (USD)', 'Saldo (Bs)', 'Saldo (USD)', 'Comprobante', 'Fotos y videos'],
     total: 'TOTAL', view: 'Ver PDF', none: 'Sin comprobante', files: (n: number) => `Ver ${n} archivo${n === 1 ? '' : 's'}`, noExpenses: 'No hay gastos registrados.',
     group: (n: number) => `${n} gasto${n === 1 ? '' : 's'}`, subtotal: 'Subtotal',
     signTitle: 'FIRMA DEL RESPONSABLE',
@@ -52,7 +52,7 @@ const T = {
     byCat: 'SUMMARY BY CATEGORY',
     cat: 'Category', nItems: 'No. of expenses', share: '% of total',
     detail: 'EXPENSE DETAIL',
-    cols: ['No.', 'Date', 'Category', 'Vendor or item', 'Item description', 'Notes', 'Receipt type', 'Amount (BOB)', 'Amount (USD)', 'Receipt', 'Photos and videos'],
+    cols: ['No.', 'Date', 'Category', 'Vendor or item', 'Item description', 'Notes', 'Receipt type', 'Amount (BOB)', 'Amount (USD)', 'Balance (BOB)', 'Balance (USD)', 'Receipt', 'Photos and videos'],
     total: 'TOTAL', view: 'View PDF', none: 'No receipt', files: (n: number) => `View ${n} file${n === 1 ? '' : 's'}`, noExpenses: 'No expenses recorded.',
     group: (n: number) => `${n} expense${n === 1 ? '' : 's'}`, subtotal: 'Subtotal',
     signTitle: 'FUND HOLDER SIGNATURE',
@@ -76,6 +76,8 @@ const LINE = 'FFC9D4DE';
 const MUTED = 'FF5F7489';
 const WHITE = 'FFFFFFFF';
 const MONEY = '#,##0.00';
+/** Saldo: en rojo si queda negativo (gasto mayor al monto asignado). */
+const BALANCE = '#,##0.00;[Red]-#,##0.00';
 
 const thin = { style: 'thin' as const, color: { argb: LINE } };
 const medium = { style: 'medium' as const, color: { argb: BLUE } };
@@ -129,7 +131,7 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     headerFooter: { oddFooter: `&L${EVENT}&R&P / &N` },
     views: [{ showGridLines: false }],
   });
-  ws.columns = [6, 12, 24, 26, 40, 30, 32, 15, 14, 16, 18].map((width) => ({ width }));
+  ws.columns = [6, 12, 22, 24, 38, 28, 30, 14, 13, 14, 13, 14, 16].map((width) => ({ width }));
 
   const totalBob = round2(gastos.reduce((s, g) => s + Number(g.monto_bob), 0));
   // USD por gasto = el guardado en cada registro; todos los totales suman esos mismos valores.
@@ -153,7 +155,7 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   const conDoc = gastos.filter((g) => g.pdf_url || g.drive_url).length;
 
   /** Merge a range and style it as a section bar. */
-  const sectionBar = (row: number, text: string, from = 'A', to = 'K') => {
+  const sectionBar = (row: number, text: string, from = 'A', to = 'M') => {
     ws.mergeCells(`${from}${row}:${to}${row}`);
     const c = ws.getCell(`${from}${row}`);
     c.value = text;
@@ -164,7 +166,7 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   };
 
   // ── Encabezado ──────────────────────────────────────────────
-  ws.mergeCells('A1:K1');
+  ws.mergeCells('A1:M1');
   Object.assign(ws.getCell('A1'), {
     value: EVENT,
     font: { bold: true, size: 16, color: { argb: WHITE } },
@@ -172,14 +174,14 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     alignment: { vertical: 'middle', indent: 1 },
   });
   ws.getRow(1).height = 30;
-  ws.mergeCells('A2:K2');
+  ws.mergeCells('A2:M2');
   Object.assign(ws.getCell('A2'), {
     value: VENUE,
     font: { size: 10, color: { argb: WHITE } },
     fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } },
     alignment: { vertical: 'middle', indent: 1 },
   });
-  ws.mergeCells('A3:K3');
+  ws.mergeCells('A3:M3');
   const generated = new Intl.DateTimeFormat(lang === 'es' ? 'es-BO' : 'en-US', {
     dateStyle: 'long', timeStyle: 'short', timeZone: 'America/La_Paz',
   }).format(new Date());
@@ -194,7 +196,7 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   // ── Carimbo: responsable (A–F) + resumen (G–K) ─────────────
   let r = 5;
   sectionBar(r, t.holder, 'A', 'F');
-  sectionBar(r, t.summary, 'G', 'K');
+  sectionBar(r, t.summary, 'G', 'M');
   r++;
 
   const holder: [string, string | number, string?][] = [
@@ -212,7 +214,7 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     [t.spentBob, totalBob, MONEY],
     [t.spentUsd, totalUsd, MONEY],
     [t.balBob, round2(PRESUPUESTO_INICIAL - totalBob), MONEY],
-    [t.balUsd, round2(MONTO_ASIGNADO_USD - totalUsd), MONEY],
+    [t.balUsd, round2((PRESUPUESTO_INICIAL - totalBob) / TIPO_CAMBIO_USD), MONEY],
     [t.pct, PRESUPUESTO_INICIAL ? totalBob / PRESUPUESTO_INICIAL : 0, '0.0%'],
     [t.count, gastos.length, '0'],
     [t.withDoc, conDoc, '0'],
@@ -240,7 +242,7 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   summary.forEach(([label, value, fmt], i) => {
     const row = r + i;
     ws.mergeCells(`G${row}:H${row}`);
-    ws.mergeCells(`I${row}:K${row}`);
+    ws.mergeCells(`I${row}:M${row}`);
     const l = ws.getCell(`G${row}`);
     l.value = label;
     l.font = { bold: true, size: 9, color: { argb: MUTED } };
@@ -251,15 +253,15 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     v.numFmt = fmt;
     v.font = { size: 10, bold: i < 4 };
     v.alignment = { vertical: 'middle', horizontal: 'right', indent: 1 };
-    for (const col of ['G', 'H', 'I', 'J', 'K']) ws.getCell(`${col}${row}`).border = allThin;
+    for (const col of ['G', 'H', 'I', 'J', 'K', 'L', 'M']) ws.getCell(`${col}${row}`).border = allThin;
   });
   // marco del carimbo
   const stampBottom = r + holder.length - 1;
   for (let row = stampTop; row <= stampBottom; row++) {
     ws.getCell(`A${row}`).border = { ...allThin, left: medium };
-    ws.getCell(`K${row}`).border = { ...allThin, right: medium };
+    ws.getCell(`M${row}`).border = { ...allThin, right: medium };
   }
-  for (const col of ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']) {
+  for (const col of ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M']) {
     const c = ws.getCell(`${col}${stampBottom}`);
     c.border = { ...(c.border ?? allThin), bottom: medium };
   }
@@ -318,13 +320,13 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   r++;
   const head = ws.getRow(r);
   t.cols.forEach((h, i) => (head.getCell(i + 1).value = h));
-  styleHeaderRow(head, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  styleHeaderRow(head, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
   head.height = 22;
   r++;
 
   const detFirst = r;
   if (gastos.length === 0) {
-    ws.mergeCells(`A${r}:K${r}`);
+    ws.mergeCells(`A${r}:M${r}`);
     ws.getCell(`A${r}`).value = t.noExpenses;
     ws.getCell(`A${r}`).font = { italic: true, color: { argb: MUTED } };
     r++;
@@ -343,6 +345,9 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   }
 
   let n = 0;
+  // Saldo corrido: monto asignado menos cada gasto, en el orden del reporte; USD al tipo de cambio fijo.
+  let saldoBob = PRESUPUESTO_INICIAL;
+  let prevSaldoRef = '';
   for (const group of groups) {
     const cat = group[0].categoria;
     const soft = categoryArgb(cat, 0.22);
@@ -357,20 +362,20 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     // SUBTOTAL: el total general (también con SUBTOTAL) no vuelve a sumar estas filas
     sep.getCell(8).value = { formula: `SUBTOTAL(9,H${first}:H${last})`, result: groupBob };
     sep.getCell(9).value = { formula: `SUBTOTAL(9,I${first}:I${last})`, result: groupUsd };
-    sep.getCell(10).value = t.subtotal;
-    for (let c = 1; c <= 11; c++) {
+    sep.getCell(12).value = t.subtotal;
+    for (let c = 1; c <= 13; c++) {
       const cell = sep.getCell(c);
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: soft } };
       cell.font = { bold: true, size: 9, color: { argb: 'FF14283E' } };
       cell.border = { top: { style: 'thin', color: { argb: strong } }, bottom: { style: 'thin', color: { argb: strong } } };
     }
     sep.getCell(1).border = { ...sep.getCell(1).border, left: { style: 'thick', color: { argb: strong } } };
-    sep.getCell(11).border = { ...sep.getCell(11).border, right: thin };
+    sep.getCell(13).border = { ...sep.getCell(13).border, right: thin };
     sep.getCell(1).alignment = { vertical: 'middle', indent: 1 };
     sep.getCell(8).numFmt = MONEY;
     sep.getCell(9).numFmt = MONEY;
-    sep.getCell(10).font = { size: 8, color: { argb: MUTED }, italic: true };
-    sep.getCell(10).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+    sep.getCell(12).font = { size: 8, color: { argb: MUTED }, italic: true };
+    sep.getCell(12).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
     sep.height = 20;
     r++;
 
@@ -379,6 +384,7 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     const row = ws.getRow(r);
     const bob = Number(g.monto_bob);
     const usd = usdOf(g);
+    saldoBob = round2(saldoBob - bob);
     const href = g.pdf_url ? `${origin}${g.pdf_url}` : g.drive_url;
     const nMedia = g.media?.length ?? 0;
     row.values = [
@@ -391,21 +397,27 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
       tr(tipoLabel(g.tipo_comprobante)),
       bob,
       usd,
+      { formula: `${prevSaldoRef ? prevSaldoRef : PRESUPUESTO_INICIAL}-H${r}`, result: saldoBob },
+      { formula: `ROUND(J${r}/${TIPO_CAMBIO_USD},2)`, result: round2(saldoBob / TIPO_CAMBIO_USD) },
       href ? { text: t.view, hyperlink: href } : t.none,
       nMedia ? { text: t.files(nMedia), hyperlink: `${origin}${galeriaUrl(g.id)}` } : '—',
     ];
     row.getCell(2).numFmt = t.dateFmt;
     row.getCell(8).numFmt = MONEY;
     row.getCell(9).numFmt = MONEY;
-    styleBodyRow(row, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], gi % 2 === 1);
+    row.getCell(10).numFmt = BALANCE;
+    row.getCell(11).numFmt = BALANCE;
+    styleBodyRow(row, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], gi % 2 === 1);
     row.getCell(1).border = { ...allThin, left: { style: 'thick', color: { argb: strong } } };
     for (const c of [3, 4, 5, 6, 7]) row.getCell(c).alignment = { vertical: 'top', wrapText: true };
     row.getCell(1).alignment = { vertical: 'top', horizontal: 'center' };
     row.getCell(2).alignment = { vertical: 'top', horizontal: 'center' };
-    row.getCell(10).alignment = { vertical: 'top', horizontal: 'center' };
-    row.getCell(10).font = href ? { color: { argb: BLUE }, underline: true, size: 9 } : { color: { argb: 'FFB45309' }, size: 9 };
-    row.getCell(11).alignment = { vertical: 'top', horizontal: 'center' };
-    row.getCell(11).font = nMedia ? { color: { argb: BLUE }, underline: true, size: 9 } : { color: { argb: MUTED }, size: 9 };
+    row.getCell(12).alignment = { vertical: 'top', horizontal: 'center' };
+    row.getCell(12).font = href ? { color: { argb: BLUE }, underline: true, size: 9 } : { color: { argb: 'FFB45309' }, size: 9 };
+    row.getCell(13).alignment = { vertical: 'top', horizontal: 'center' };
+    row.getCell(13).font = nMedia ? { color: { argb: BLUE }, underline: true, size: 9 } : { color: { argb: MUTED }, size: 9 };
+    for (const c of [10, 11]) row.getCell(c).font = { size: 9, color: { argb: 'FF14283E' } };
+    prevSaldoRef = `J${r}`;
     r++;
     });
   }
@@ -416,8 +428,16 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   detTotal.getCell(8).numFmt = MONEY;
   detTotal.getCell(9).value = { formula: `SUBTOTAL(9,I${detFirst}:I${Math.max(detFirst, r - 1)})`, result: totalUsd };
   detTotal.getCell(9).numFmt = MONEY;
-  styleTotalRow(detTotal, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-  ws.autoFilter = { from: { row: detFirst - 1, column: 1 }, to: { row: Math.max(detFirst, r - 1), column: 11 } };
+  // saldo final (el del último gasto) en la fila de total
+  const saldoFinal = round2(PRESUPUESTO_INICIAL - totalBob);
+  detTotal.getCell(10).value = prevSaldoRef
+    ? { formula: prevSaldoRef, result: saldoFinal }
+    : PRESUPUESTO_INICIAL;
+  detTotal.getCell(10).numFmt = BALANCE;
+  detTotal.getCell(11).value = { formula: `ROUND(J${r}/${TIPO_CAMBIO_USD},2)`, result: round2(saldoFinal / TIPO_CAMBIO_USD) };
+  detTotal.getCell(11).numFmt = BALANCE;
+  styleTotalRow(detTotal, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+  ws.autoFilter = { from: { row: detFirst - 1, column: 1 }, to: { row: Math.max(detFirst, r - 1), column: 13 } };
   r += 3;
 
   // ── Carimbo de firma ───────────────────────────────────────
@@ -433,16 +453,16 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
     font: { size: 9, italic: true, color: { argb: 'FF14283E' } },
     alignment: { vertical: 'middle', wrapText: true, indent: 1 },
   });
-  ws.mergeCells(`F${r}:K${r + boxRows - 2}`);
+  ws.mergeCells(`F${r}:M${r + boxRows - 2}`);
   ws.getCell(`F${r}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFBFCFE' } };
-  ws.mergeCells(`F${r + boxRows - 1}:K${r + boxRows - 1}`);
+  ws.mergeCells(`F${r + boxRows - 1}:M${r + boxRows - 1}`);
   Object.assign(ws.getCell(`F${r + boxRows - 1}`), {
     value: t.signHere,
     font: { size: 8, color: { argb: MUTED } },
     alignment: { vertical: 'middle', horizontal: 'center' },
   });
   for (let i = 0; i < boxRows; i++) ws.getRow(r + i).height = i === boxRows - 1 ? 16 : 20;
-  outline(boxTop, 6, boxTop + boxRows - 1, 11, thin);
+  outline(boxTop, 6, boxTop + boxRows - 1, 13, thin);
   // línea de firma
   for (let col = 7; col <= 9; col++) {
     const c = ws.getRow(boxTop + boxRows - 2).getCell(col);
@@ -483,7 +503,7 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
   signRows.forEach(([label, value], i) => {
     const row = r + i;
     ws.mergeCells(`A${row}:C${row}`);
-    ws.mergeCells(`D${row}:K${row}`);
+    ws.mergeCells(`D${row}:M${row}`);
     Object.assign(ws.getCell(`A${row}`), {
       value: label,
       font: { bold: true, size: 9, color: { argb: MUTED } },
@@ -502,9 +522,9 @@ export async function buildReport(gastos: Gasto[], lang: Lang, origin: string): 
 
   // Bordes del carimbo de firma
   for (let row = boxTop + boxRows; row <= signBottom; row++) {
-    for (let col = 1; col <= 11; col++) ws.getRow(row).getCell(col).border = allThin;
+    for (let col = 1; col <= 13; col++) ws.getRow(row).getCell(col).border = allThin;
   }
-  outline(signTop + 1, 1, signBottom, 11, medium);
+  outline(signTop + 1, 1, signBottom, 13, medium);
 
   const buf = await wb.xlsx.writeBuffer();
   return Buffer.from(buf);
